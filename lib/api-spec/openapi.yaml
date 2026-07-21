@@ -3,20 +3,32 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: SED Command Center API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: dashboard
+    description: Dashboard and analytics
+  - name: business-units
+    description: Business unit management
+  - name: customers
+    description: Customer CRM
+  - name: finance
+    description: Finance management
+  - name: sales
+    description: Sales pipeline
+  - name: reports
+    description: Reports and exports
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +36,1268 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── DASHBOARD ──────────────────────────────────────────────────────────────
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Executive dashboard KPI summary
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, yesterday, this_week, this_month, last_month, quarter, year]
+            default: this_month
+        - name: businessUnitId
+          in: query
+          schema:
+            type: ["integer", "null"]
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/revenue-chart:
+    get:
+      operationId: getDashboardRevenueChart
+      tags: [dashboard]
+      summary: Revenue chart data (monthly breakdown)
+      parameters:
+        - name: year
+          in: query
+          schema:
+            type: integer
+        - name: businessUnitId
+          in: query
+          schema:
+            type: ["integer", "null"]
+      responses:
+        "200":
+          description: Revenue chart data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChartDataPoint"
+
+  /dashboard/top-business-units:
+    get:
+      operationId: getTopBusinessUnits
+      tags: [dashboard]
+      summary: Top performing business units by revenue
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, this_month, this_year]
+            default: this_month
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 5
+      responses:
+        "200":
+          description: Top business units
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BusinessUnitStat"
+
+  /dashboard/cashflow:
+    get:
+      operationId: getDashboardCashflow
+      tags: [dashboard]
+      summary: Cashflow overview with forecast
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [daily, weekly, monthly, yearly]
+            default: monthly
+      responses:
+        "200":
+          description: Cashflow data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashflowSummary"
+
+  # ── BUSINESS UNITS ─────────────────────────────────────────────────────────
+  /business-units:
+    get:
+      operationId: listBusinessUnits
+      tags: [business-units]
+      summary: List all business units
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: ["string", "null"]
+            enum: [Media, Digital, Tourism, Luxury, "Travel Support", Lifestyle, Service, Retail, "null"]
+      responses:
+        "200":
+          description: List of business units
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BusinessUnit"
+    post:
+      operationId: createBusinessUnit
+      tags: [business-units]
+      summary: Create a business unit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BusinessUnitInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessUnit"
+
+  /business-units/{id}:
+    get:
+      operationId: getBusinessUnit
+      tags: [business-units]
+      summary: Get business unit by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Business unit detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessUnitDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateBusinessUnit
+      tags: [business-units]
+      summary: Update business unit
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BusinessUnitUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessUnit"
+
+
+  # ── CUSTOMERS (CRM) ────────────────────────────────────────────────────────
+  /customers:
+    get:
+      operationId: listCustomers
+      tags: [customers]
+      summary: List customers
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: ["string", "null"]
+            enum: [Lead, Prospect, Negotiation, Customer, "Repeat Customer", VIP, "null"]
+        - name: businessUnitId
+          in: query
+          schema:
+            type: ["integer", "null"]
+        - name: search
+          in: query
+          schema:
+            type: ["string", "null"]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Paginated customer list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerList"
+    post:
+      operationId: createCustomer
+      tags: [customers]
+      summary: Create a customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+
+  /customers/{id}:
+    get:
+      operationId: getCustomer
+      tags: [customers]
+      summary: Get customer by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Customer detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateCustomer
+      tags: [customers]
+      summary: Update customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+    delete:
+      operationId: deleteCustomer
+      tags: [customers]
+      summary: Delete customer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /customers/stats/summary:
+    get:
+      operationId: getCustomerStats
+      tags: [customers]
+      summary: Customer stats by status
+      responses:
+        "200":
+          description: Customer stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerStats"
+
+  # ── SALES PIPELINE ─────────────────────────────────────────────────────────
+  /sales/deals:
+    get:
+      operationId: listDeals
+      tags: [sales]
+      summary: List deals
+      parameters:
+        - name: stage
+          in: query
+          schema:
+            type: ["string", "null"]
+            enum: [Lead, Qualified, Proposal, Negotiation, Won, Lost, "null"]
+        - name: businessUnitId
+          in: query
+          schema:
+            type: ["integer", "null"]
+        - name: assignedStaff
+          in: query
+          schema:
+            type: ["string", "null"]
+      responses:
+        "200":
+          description: List of deals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Deal"
+    post:
+      operationId: createDeal
+      tags: [sales]
+      summary: Create a deal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DealInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deal"
+
+  /sales/deals/{id}:
+    get:
+      operationId: getDeal
+      tags: [sales]
+      summary: Get deal by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deal"
+    patch:
+      operationId: updateDeal
+      tags: [sales]
+      summary: Update deal (including stage move)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DealUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Deal"
+    delete:
+      operationId: deleteDeal
+      tags: [sales]
+      summary: Delete deal
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /sales/pipeline-summary:
+    get:
+      operationId: getPipelineSummary
+      tags: [sales]
+      summary: Pipeline summary with value by stage
+      responses:
+        "200":
+          description: Pipeline summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PipelineSummary"
+
+  # ── FINANCE ────────────────────────────────────────────────────────────────
+  /finance/income:
+    get:
+      operationId: listIncome
+      tags: [finance]
+      summary: List income records
+      parameters:
+        - name: businessUnitId
+          in: query
+          schema:
+            type: ["integer", "null"]
+        - name: startDate
+          in: query
+          schema:
+            type: ["string", "null"]
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: ["string", "null"]
+            format: date
+        - name: status
+          in: query
+          schema:
+            type: ["string", "null"]
+            enum: [Pending, Received, Cancelled, "null"]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Income list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IncomeList"
+    post:
+      operationId: createIncome
+      tags: [finance]
+      summary: Create income record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncomeInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Income"
+
+  /finance/income/{id}:
+    get:
+      operationId: getIncome
+      tags: [finance]
+      summary: Get income by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Income
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Income"
+    patch:
+      operationId: updateIncome
+      tags: [finance]
+      summary: Update income record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IncomeUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Income"
+    delete:
+      operationId: deleteIncome
+      tags: [finance]
+      summary: Delete income record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /finance/expenses:
+    get:
+      operationId: listExpenses
+      tags: [finance]
+      summary: List expense records
+      parameters:
+        - name: businessUnitId
+          in: query
+          schema:
+            type: ["integer", "null"]
+        - name: startDate
+          in: query
+          schema:
+            type: ["string", "null"]
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: ["string", "null"]
+            format: date
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Expense list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExpenseList"
+    post:
+      operationId: createExpense
+      tags: [finance]
+      summary: Create expense record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+
+  /finance/expenses/{id}:
+    get:
+      operationId: getExpense
+      tags: [finance]
+      summary: Get expense by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Expense
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+    patch:
+      operationId: updateExpense
+      tags: [finance]
+      summary: Update expense record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+    delete:
+      operationId: deleteExpense
+      tags: [finance]
+      summary: Delete expense record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /finance/profit-loss:
+    get:
+      operationId: getProfitLoss
+      tags: [finance]
+      summary: Get profit & loss report
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, yesterday, this_week, this_month, last_month, quarter, year]
+            default: this_month
+        - name: startDate
+          in: query
+          schema:
+            type: ["string", "null"]
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: ["string", "null"]
+            format: date
+        - name: businessUnitId
+          in: query
+          schema:
+            type: ["integer", "null"]
+      responses:
+        "200":
+          description: Profit & Loss report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfitLossReport"
+
+  /finance/cashflow-detail:
+    get:
+      operationId: getCashflowDetail
+      tags: [finance]
+      summary: Detailed cashflow data
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [daily, weekly, monthly, yearly]
+            default: monthly
+        - name: businessUnitId
+          in: query
+          schema:
+            type: ["integer", "null"]
+      responses:
+        "200":
+          description: Cashflow detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashflowDetail"
+
+  # ── REPORTS ────────────────────────────────────────────────────────────────
+  /reports/revenue:
+    get:
+      operationId: getRevenueReport
+      tags: [reports]
+      summary: Revenue report
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [this_month, last_month, quarter, year]
+            default: this_month
+        - name: businessUnitId
+          in: query
+          schema:
+            type: ["integer", "null"]
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month, business_unit, category]
+            default: month
+      responses:
+        "200":
+          description: Revenue report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevenueReport"
+
+  /reports/analytics:
+    get:
+      operationId: getAnalytics
+      tags: [reports]
+      summary: Executive analytics (top/lowest performers)
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [this_month, quarter, year]
+            default: this_month
+      responses:
+        "200":
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsReport"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    # ── DASHBOARD ─────────────────────────────────────────────────────────────
+    DashboardSummary:
+      type: object
+      required: [totalRevenue, todayRevenue, monthlyRevenue, yearlyRevenue, totalExpenses, netProfit, cashflow, totalCustomers, totalTransactions, profitMargin, revenueGrowth, expenseGrowth]
+      properties:
+        totalRevenue: { type: number }
+        todayRevenue: { type: number }
+        monthlyRevenue: { type: number }
+        yearlyRevenue: { type: number }
+        totalExpenses: { type: number }
+        netProfit: { type: number }
+        cashflow: { type: number }
+        totalCustomers: { type: integer }
+        totalTransactions: { type: integer }
+        profitMargin: { type: number }
+        revenueGrowth: { type: number }
+        expenseGrowth: { type: number }
+
+    ChartDataPoint:
+      type: object
+      required: [label, revenue, expenses, profit]
+      properties:
+        label: { type: string }
+        revenue: { type: number }
+        expenses: { type: number }
+        profit: { type: number }
+
+    CashflowSummary:
+      type: object
+      required: [bankBalance, inflow, outflow, netCashflow, outstandingInvoices, outstandingExpenses, forecastNext30Days]
+      properties:
+        bankBalance: { type: number }
+        inflow: { type: number }
+        outflow: { type: number }
+        netCashflow: { type: number }
+        outstandingInvoices: { type: number }
+        outstandingExpenses: { type: number }
+        forecastNext30Days: { type: number }
+
+    # ── BUSINESS UNITS ────────────────────────────────────────────────────────
+    BusinessUnit:
+      type: object
+      required: [id, name, category, slug, isActive, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        slug: { type: string }
+        category:
+          type: string
+          enum: [Media, Digital, Tourism, Luxury, "Travel Support", Lifestyle, Service, Retail]
+        website: { type: ["string", "null"] }
+        logoUrl: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    BusinessUnitDetail:
+      allOf:
+        - $ref: "#/components/schemas/BusinessUnit"
+        - type: object
+          properties:
+            totalRevenue: { type: number }
+            totalExpenses: { type: number }
+            netProfit: { type: number }
+            totalCustomers: { type: integer }
+            totalProjects: { type: integer }
+            totalInvoices: { type: integer }
+            totalStaff: { type: integer }
+            notes: { type: ["string", "null"] }
+
+    BusinessUnitStat:
+      type: object
+      required: [id, name, category, revenue, expenses, profit, growth]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        category: { type: string }
+        logoUrl: { type: ["string", "null"] }
+        revenue: { type: number }
+        expenses: { type: number }
+        profit: { type: number }
+        growth: { type: number }
+
+    BusinessUnitInput:
+      type: object
+      required: [name, category]
+      properties:
+        name: { type: string }
+        slug: { type: string }
+        category:
+          type: string
+          enum: [Media, Digital, Tourism, Luxury, "Travel Support", Lifestyle, Service, Retail]
+        website: { type: string }
+        logoUrl: { type: string }
+        description: { type: string }
+        isActive: { type: boolean }
+        notes: { type: string }
+
+    BusinessUnitUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        category:
+          type: string
+          enum: [Media, Digital, Tourism, Luxury, "Travel Support", Lifestyle, Service, Retail]
+        website: { type: string }
+        logoUrl: { type: string }
+        description: { type: string }
+        isActive: { type: boolean }
+        notes: { type: string }
+
+    # ── CUSTOMERS ─────────────────────────────────────────────────────────────
+    Customer:
+      type: object
+      required: [id, customerId, fullName, status, createdAt]
+      properties:
+        id: { type: integer }
+        customerId: { type: string }
+        fullName: { type: string }
+        businessName: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        whatsapp: { type: ["string", "null"] }
+        email: { type: ["string", "null"] }
+        nationality: { type: ["string", "null"] }
+        country: { type: ["string", "null"] }
+        address: { type: ["string", "null"] }
+        businessUnitId: { type: ["integer", "null"] }
+        businessUnitName: { type: ["string", "null"] }
+        serviceInterested: { type: ["string", "null"] }
+        leadSource: { type: ["string", "null"] }
+        facebook: { type: ["string", "null"] }
+        instagram: { type: ["string", "null"] }
+        website: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        status:
+          type: string
+          enum: [Lead, Prospect, Negotiation, Customer, "Repeat Customer", VIP]
+        lastContact: { type: ["string", "null"], format: date }
+        nextFollowUp: { type: ["string", "null"], format: date }
+        assignedStaff: { type: ["string", "null"] }
+        tags: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    CustomerList:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Customer"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+
+    CustomerStats:
+      type: object
+      required: [total, byStatus, growth]
+      properties:
+        total: { type: integer }
+        growth: { type: number }
+        byStatus:
+          type: array
+          items:
+            type: object
+            required: [status, count]
+            properties:
+              status: { type: string }
+              count: { type: integer }
+
+    CustomerInput:
+      type: object
+      required: [fullName, status]
+      properties:
+        fullName: { type: string }
+        businessName: { type: string }
+        phone: { type: string }
+        whatsapp: { type: string }
+        email: { type: string }
+        nationality: { type: string }
+        country: { type: string }
+        address: { type: string }
+        businessUnitId: { type: integer }
+        serviceInterested: { type: string }
+        leadSource: { type: string }
+        facebook: { type: string }
+        instagram: { type: string }
+        website: { type: string }
+        notes: { type: string }
+        status:
+          type: string
+          enum: [Lead, Prospect, Negotiation, Customer, "Repeat Customer", VIP]
+        lastContact: { type: string, format: date }
+        nextFollowUp: { type: string, format: date }
+        assignedStaff: { type: string }
+        tags: { type: string }
+
+    CustomerUpdate:
+      type: object
+      properties:
+        fullName: { type: string }
+        businessName: { type: string }
+        phone: { type: string }
+        whatsapp: { type: string }
+        email: { type: string }
+        nationality: { type: string }
+        country: { type: string }
+        address: { type: string }
+        businessUnitId: { type: integer }
+        serviceInterested: { type: string }
+        leadSource: { type: string }
+        facebook: { type: string }
+        instagram: { type: string }
+        website: { type: string }
+        notes: { type: string }
+        status:
+          type: string
+          enum: [Lead, Prospect, Negotiation, Customer, "Repeat Customer", VIP]
+        lastContact: { type: string, format: date }
+        nextFollowUp: { type: string, format: date }
+        assignedStaff: { type: string }
+        tags: { type: string }
+
+    # ── SALES / PIPELINE ──────────────────────────────────────────────────────
+    Deal:
+      type: object
+      required: [id, title, stage, value, currency, createdAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        stage:
+          type: string
+          enum: [Lead, Qualified, Proposal, Negotiation, Won, Lost]
+        value: { type: number }
+        currency: { type: string, default: IDR }
+        customerId: { type: ["integer", "null"] }
+        customerName: { type: ["string", "null"] }
+        businessUnitId: { type: ["integer", "null"] }
+        businessUnitName: { type: ["string", "null"] }
+        assignedStaff: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
+        expectedCloseDate: { type: ["string", "null"], format: date }
+        probability: { type: ["integer", "null"] }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    DealInput:
+      type: object
+      required: [title, stage, value]
+      properties:
+        title: { type: string }
+        stage:
+          type: string
+          enum: [Lead, Qualified, Proposal, Negotiation, Won, Lost]
+        value: { type: number }
+        currency: { type: string }
+        customerId: { type: integer }
+        businessUnitId: { type: integer }
+        assignedStaff: { type: string }
+        description: { type: string }
+        expectedCloseDate: { type: string, format: date }
+        probability: { type: integer }
+        notes: { type: string }
+
+    DealUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        stage:
+          type: string
+          enum: [Lead, Qualified, Proposal, Negotiation, Won, Lost]
+        value: { type: number }
+        customerId: { type: integer }
+        businessUnitId: { type: integer }
+        assignedStaff: { type: string }
+        description: { type: string }
+        expectedCloseDate: { type: string, format: date }
+        probability: { type: integer }
+        notes: { type: string }
+
+    PipelineSummary:
+      type: object
+      required: [totalValue, totalDeals, byStage]
+      properties:
+        totalValue: { type: number }
+        totalDeals: { type: integer }
+        wonValue: { type: number }
+        wonDeals: { type: integer }
+        byStage:
+          type: array
+          items:
+            type: object
+            required: [stage, count, value]
+            properties:
+              stage: { type: string }
+              count: { type: integer }
+              value: { type: number }
+
+    # ── FINANCE ───────────────────────────────────────────────────────────────
+    Income:
+      type: object
+      required: [id, date, amount, status, createdAt]
+      properties:
+        id: { type: integer }
+        date: { type: string, format: date }
+        businessUnitId: { type: ["integer", "null"] }
+        businessUnitName: { type: ["string", "null"] }
+        customerId: { type: ["integer", "null"] }
+        customerName: { type: ["string", "null"] }
+        category: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
+        amount: { type: number }
+        tax: { type: number, default: 0 }
+        paymentMethod: { type: ["string", "null"] }
+        invoiceNumber: { type: ["string", "null"] }
+        status:
+          type: string
+          enum: [Pending, Received, Cancelled]
+          default: Received
+        createdAt: { type: string, format: date-time }
+
+    IncomeList:
+      type: object
+      required: [data, total, page, limit, totalAmount]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Income"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+        totalAmount: { type: number }
+
+    IncomeInput:
+      type: object
+      required: [date, amount]
+      properties:
+        date: { type: string, format: date }
+        businessUnitId: { type: integer }
+        customerId: { type: integer }
+        category: { type: string }
+        description: { type: string }
+        amount: { type: number }
+        tax: { type: number }
+        paymentMethod: { type: string }
+        invoiceNumber: { type: string }
+        status:
+          type: string
+          enum: [Pending, Received, Cancelled]
+
+    IncomeUpdate:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        businessUnitId: { type: integer }
+        customerId: { type: integer }
+        category: { type: string }
+        description: { type: string }
+        amount: { type: number }
+        tax: { type: number }
+        paymentMethod: { type: string }
+        invoiceNumber: { type: string }
+        status:
+          type: string
+          enum: [Pending, Received, Cancelled]
+
+    Expense:
+      type: object
+      required: [id, date, amount, createdAt]
+      properties:
+        id: { type: integer }
+        date: { type: string, format: date }
+        businessUnitId: { type: ["integer", "null"] }
+        businessUnitName: { type: ["string", "null"] }
+        vendor: { type: ["string", "null"] }
+        category: { type: ["string", "null"] }
+        description: { type: ["string", "null"] }
+        amount: { type: number }
+        tax: { type: number, default: 0 }
+        paymentMethod: { type: ["string", "null"] }
+        receiptNumber: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+
+    ExpenseList:
+      type: object
+      required: [data, total, page, limit, totalAmount]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Expense"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+        totalAmount: { type: number }
+
+    ExpenseInput:
+      type: object
+      required: [date, amount]
+      properties:
+        date: { type: string, format: date }
+        businessUnitId: { type: integer }
+        vendor: { type: string }
+        category: { type: string }
+        description: { type: string }
+        amount: { type: number }
+        tax: { type: number }
+        paymentMethod: { type: string }
+        receiptNumber: { type: string }
+
+    ExpenseUpdate:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        businessUnitId: { type: integer }
+        vendor: { type: string }
+        category: { type: string }
+        description: { type: string }
+        amount: { type: number }
+        tax: { type: number }
+        paymentMethod: { type: string }
+        receiptNumber: { type: string }
+
+    ProfitLossReport:
+      type: object
+      required: [period, revenue, expenses, grossProfit, netProfit, margin, tax, growth, breakdown]
+      properties:
+        period: { type: string }
+        revenue: { type: number }
+        expenses: { type: number }
+        grossProfit: { type: number }
+        netProfit: { type: number }
+        margin: { type: number }
+        tax: { type: number }
+        growth: { type: number }
+        breakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChartDataPoint"
+
+    CashflowDetail:
+      type: object
+      required: [bankBalance, totalInflow, totalOutflow, netCashflow, outstandingInvoices, outstandingExpenses, series]
+      properties:
+        bankBalance: { type: number }
+        totalInflow: { type: number }
+        totalOutflow: { type: number }
+        netCashflow: { type: number }
+        outstandingInvoices: { type: number }
+        outstandingExpenses: { type: number }
+        forecastNext30Days: { type: number }
+        series:
+          type: array
+          items:
+            type: object
+            required: [label, inflow, outflow, balance]
+            properties:
+              label: { type: string }
+              inflow: { type: number }
+              outflow: { type: number }
+              balance: { type: number }
+
+    RevenueReport:
+      type: object
+      required: [totalRevenue, totalExpenses, netProfit, data]
+      properties:
+        totalRevenue: { type: number }
+        totalExpenses: { type: number }
+        netProfit: { type: number }
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChartDataPoint"
+
+    AnalyticsReport:
+      type: object
+      required: [topRevenue, lowestRevenue, highestExpense, highestProfit, customerGrowth, monthlyGrowth, yearlyGrowth]
+      properties:
+        topRevenue:
+          type: array
+          items:
+            $ref: "#/components/schemas/BusinessUnitStat"
+        lowestRevenue:
+          type: array
+          items:
+            $ref: "#/components/schemas/BusinessUnitStat"
+        highestExpense:
+          type: array
+          items:
+            $ref: "#/components/schemas/BusinessUnitStat"
+        highestProfit:
+          type: array
+          items:
+            $ref: "#/components/schemas/BusinessUnitStat"
+        customerGrowth: { type: number }
+        monthlyGrowth: { type: number }
+        yearlyGrowth: { type: number }

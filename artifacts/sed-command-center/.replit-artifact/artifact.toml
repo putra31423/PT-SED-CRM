@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "SED Command Center"
+version = "1.0.0"
+id = "artifacts/sed-command-center"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24117
+
+[services.development]
+run = "pnpm --filter @workspace/sed-command-center run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/sed-command-center", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/sed-command-center/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24117"
+BASE_PATH = "/"

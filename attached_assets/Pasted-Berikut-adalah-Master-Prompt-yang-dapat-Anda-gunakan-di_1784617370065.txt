@@ -1,0 +1,745 @@
+Berikut adalah Master Prompt yang dapat Anda gunakan di Replit AI, Lovable, Bolt.new, Firebase Studio, Cursor AI, atau AI Website Builder untuk membangun SED ERP & CRM khusus PT. Solusi Era Digital.
+
+⸻
+
+MASTER PROMPT
+
+SED ERP & CRM
+
+PT. SOLUSI ERA DIGITAL
+
+Build a modern, enterprise-grade, AI-powered CRM + ERP web application for PT. Solusi Era Digital (SED).
+
+This application will become the central operating system for the holding company that manages 30 business units.
+
+The UI must look like a combination of:
+
+* Apple
+* Linear.app
+* Notion
+* Stripe Dashboard
+* Zoho CRM
+* Odoo
+* Monday.com
+
+with a premium corporate appearance.
+
+⸻
+
+BRAND GUIDELINE
+
+Primary Color
+
+#0057D9
+
+Secondary
+
+#0A1F44
+
+Accent
+
+#4DA3FF
+
+Background
+
+#FFFFFF
+
+Card
+
+#F7F9FC
+
+Border
+
+#E5E7EB
+
+Text
+
+#111827
+
+Primary Font
+
+Inter
+
+Radius
+
+16px
+
+Glassmorphism
+
+Soft Shadow
+
+Rounded Premium
+
+Minimalist
+
+White Space
+
+Professional
+
+Modern
+
+⸻
+
+APPLICATION NAME
+
+SED COMMAND CENTER
+
+Subtitle
+
+PT Solusi Era Digital Holding Management System
+
+⸻
+
+LOGIN PAGE
+
+Beautiful corporate login
+
+White Background
+
+SED Logo
+
+Blue Gradient
+
+Email
+
+Password
+
+Remember Me
+
+Forgot Password
+
+Google Login
+
+Microsoft Login
+
+⸻
+
+SIDEBAR MENU
+
+Dashboard
+
+Finance
+
+CRM
+
+Business Units
+
+Profit & Loss
+
+Cashflow
+
+Customer Database
+
+Sales
+
+Invoices
+
+Expenses
+
+Income
+
+Projects
+
+Marketing
+
+SEO
+
+HR
+
+Task Management
+
+Calendar
+
+AI Assistant
+
+Reports
+
+Settings
+
+⸻
+
+DASHBOARD
+
+Executive Dashboard
+
+Display
+
+Total Revenue
+
+Today’s Revenue
+
+Monthly Revenue
+
+Yearly Revenue
+
+Expenses
+
+Profit
+
+Cashflow
+
+Number of Customers
+
+Number of Transactions
+
+Top Business Unit
+
+Revenue Growth
+
+Expense Growth
+
+Profit Margin
+
+Charts
+
+Pie Chart
+
+Line Chart
+
+Bar Chart
+
+Heatmap
+
+⸻
+
+BUSINESS UNIT MODULE
+
+Create all 30 business units.
+
+Media
+
+* BaliUpdate.id
+* YukUpdate Media
+* PressUpdate.com
+
+Digital
+
+* BaliDigitalExpert.com
+* Growth360.id
+* CekWifi.com
+* Legalisee.com
+
+Tourism
+
+* Travana.id
+* KelilingIndonesia.id
+* TheBaliDestiny.com
+* VillaGlamours.com
+
+Luxury
+
+* Bali Yacht Charter
+* Global Yachting
+* JetAsia
+
+Travel Support
+
+* Sacred Bali Journey
+* BaliGetBike
+* Bali Vacation Club
+* Visa Advisor
+* Bali Discount Club
+
+Lifestyle
+
+* Bali Private Yoga
+* SpaBali.id
+* EricaBeauty.id
+* LesRenang.id
+* Bali Surfing
+* Mermaid Academy
+* Bali Pilates Course
+
+Service
+
+* PanggilTukang
+* BaliBabySitter
+
+Retail
+
+* BaliWineSpirits.com
+* Omni Clean
+
+Each business unit must have
+
+Logo
+
+Revenue
+
+Expense
+
+Profit
+
+Customer
+
+Projects
+
+Invoices
+
+Sales
+
+Staff
+
+Notes
+
+⸻
+
+FINANCE MODULE
+
+Income
+
+Expense
+
+Transfer
+
+Journal
+
+Assets
+
+Liabilities
+
+Accounts
+
+Budget
+
+Recurring Expense
+
+Recurring Income
+
+Cashflow
+
+Bank Account
+
+Petty Cash
+
+⸻
+
+Income Form
+
+Date
+
+Business Unit
+
+Customer
+
+Category
+
+Description
+
+Amount
+
+Tax
+
+Payment Method
+
+Invoice
+
+Attachment
+
+Status
+
+⸻
+
+Expense Form
+
+Date
+
+Business Unit
+
+Vendor
+
+Category
+
+Description
+
+Amount
+
+Tax
+
+Receipt
+
+Attachment
+
+Payment Method
+
+⸻
+
+CUSTOMER CRM
+
+Store unlimited customers.
+
+Fields
+
+Customer ID
+
+Full Name
+
+Business Name
+
+Phone
+
+WhatsApp
+
+Email
+
+Nationality
+
+Country
+
+Address
+
+Business Unit
+
+Service Interested
+
+Lead Source
+
+Facebook
+
+Instagram
+
+Website
+
+Notes
+
+Status
+
+Lead
+
+Prospect
+
+Negotiation
+
+Customer
+
+Repeat Customer
+
+VIP
+
+Last Contact
+
+Next Follow Up
+
+Assigned Staff
+
+Tags
+
+Documents
+
+⸻
+
+SALES PIPELINE
+
+Lead
+
+Qualified
+
+Proposal
+
+Negotiation
+
+Won
+
+Lost
+
+Pipeline Board
+
+Drag and Drop
+
+⸻
+
+PROFIT & LOSS
+
+Automatic calculation.
+
+Can filter
+
+Today
+
+Yesterday
+
+This Week
+
+This Month
+
+Last Month
+
+Quarter
+
+Year
+
+Custom Date
+
+Can filter by
+
+Business Unit
+
+Category
+
+Customer
+
+Staff
+
+Display
+
+Revenue
+
+Expense
+
+Gross Profit
+
+Net Profit
+
+Margin
+
+Tax
+
+Growth
+
+⸻
+
+CASHFLOW
+
+Daily
+
+Weekly
+
+Monthly
+
+Yearly
+
+Forecast
+
+Bank Balance
+
+Outstanding Invoice
+
+Outstanding Expense
+
+⸻
+
+REPORTS
+
+Revenue Report
+
+Expense Report
+
+Profit Report
+
+Cashflow Report
+
+Business Unit Report
+
+Customer Report
+
+Sales Report
+
+Marketing Report
+
+SEO Report
+
+Employee Report
+
+⸻
+
+Export
+
+PDF
+
+Excel
+
+CSV
+
+⸻
+
+SEARCH
+
+Global Search
+
+Search everything instantly.
+
+⸻
+
+NOTIFICATION
+
+Email
+
+WhatsApp
+
+Push Notification
+
+⸻
+
+AI ASSISTANT
+
+SED AI Assistant
+
+Capabilities
+
+Generate Report
+
+Analyze Revenue
+
+Analyze Expenses
+
+Forecast Profit
+
+Business Recommendation
+
+Predict Cashflow
+
+Sales Recommendation
+
+Customer Insight
+
+Automatic Summary
+
+⸻
+
+KPI DASHBOARD
+
+Per Business Unit
+
+Revenue Target
+
+Expense Target
+
+Profit Target
+
+Achievement
+
+Growth %
+
+Traffic
+
+Conversion
+
+ROI
+
+⸻
+
+ANALYTICS
+
+Executive Analytics
+
+Top Revenue
+
+Lowest Revenue
+
+Highest Expense
+
+Highest Profit
+
+Customer Growth
+
+Monthly Growth
+
+Yearly Growth
+
+⸻
+
+USER ROLE
+
+Super Admin
+
+CEO
+
+Finance
+
+HR
+
+Marketing
+
+Sales
+
+Manager
+
+Staff
+
+Viewer
+
+⸻
+
+SECURITY
+
+Role Permission
+
+2FA
+
+Audit Log
+
+Daily Backup
+
+Cloud Storage
+
+⸻
+
+RESPONSIVE
+
+Desktop
+
+Tablet
+
+Mobile
+
+⸻
+
+TECHNOLOGY
+
+Frontend
+
+Next.js
+
+React
+
+TailwindCSS
+
+TypeScript
+
+Backend
+
+Supabase
+
+PostgreSQL
+
+Authentication
+
+Supabase Auth
+
+Storage
+
+Supabase Storage
+
+Realtime
+
+Supabase Realtime
+
+Charts
+
+Recharts
+
+Deployment
+
+Vercel
+
+⸻
+
+FINAL GOAL
+
+Build an enterprise-grade ERP + CRM that allows the CEO of PT. Solusi Era Digital to monitor all 30 business units from a single dashboard with real-time financial reporting, centralized customer management, profit & loss analysis (filterable by day, month, year), cashflow monitoring, AI-powered insights, and executive analytics.
+
+⸻
+
+Rekomendasi Pengembangan Lanjutan
+
+Agar sistem ini benar-benar menjadi operating system PT SED, saya menyarankan menambahkan beberapa modul strategis:
+
+* Approval Workflow (pengeluaran harus disetujui sesuai limit)
+* Document Management (kontrak, invoice, legal document)
+* Asset Management (domain, hosting, lisensi software, kendaraan, perangkat)
+* Subscription Tracker (Vercel, Hostinger, Google Workspace, Zoho, Meta Ads, dll.)
+* OKR & KPI Management untuk setiap unit bisnis
+* Investor Dashboard yang menampilkan valuasi, pertumbuhan, dan KPI holding
+* AI Forecasting untuk prediksi pendapatan, cashflow, dan kebutuhan modal
+
+Dengan modul-modul tersebut, sistem ini tidak hanya menjadi CRM, tetapi berkembang menjadi SED Command Center, yaitu pusat kendali seluruh operasional PT. Solusi Era Digital.
