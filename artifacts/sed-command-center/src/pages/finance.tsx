@@ -22,7 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { formatIDR } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Calendar as CalendarIcon, Download, FileSpreadsheet, ChevronDown, TrendingUp, TrendingDown, Wallet, ArrowDownRight, ArrowUpRight, UserPlus, Building2, X, ArrowLeft } from "lucide-react";
+import { Plus, Search, Calendar as CalendarIcon, Download, FileSpreadsheet, ChevronDown, TrendingUp, TrendingDown, Wallet, ArrowDownRight, ArrowUpRight, UserPlus, Building2, X, ArrowLeft, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Link } from "wouter";
 import { AreaChart, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line } from "recharts";
 
@@ -255,8 +255,12 @@ export default function FinanceHub() {
   );
 }
 
+type SortDir = "asc" | "desc";
+
 function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; businessUnits: { id: number; name: string }[] }) {
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"date" | "amount" | "status">("date");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const { data: incomeList, isLoading } = useListIncome({ businessUnitId: buFilter ?? undefined });
   const { data: customers } = useListCustomers({ limit: 1000 });
   const createIncome = useCreateIncome();
@@ -290,7 +294,7 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
       await queryClient.invalidateQueries({ queryKey: getListCustomersQueryKey() });
       // Auto-select the just-created customer
       setF("customerId", String(newCust.id));
-      toast({ title: `Customer "${newCust.name}" ditambahkan ✓` });
+      toast({ title: `Customer "${newCust.fullName}" ditambahkan ✓` });
       setCustForm({ fullName: "", businessName: "", phone: "", email: "", status: "Lead" });
       setAddCustOpen(false);
     } catch {
@@ -368,25 +372,59 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
     }
   }
 
-  const filtered = (incomeList?.data ?? []).filter(item =>
-    !search ||
-    item.invoiceNumber?.toLowerCase().includes(search.toLowerCase()) ||
-    item.customerName?.toLowerCase().includes(search.toLowerCase()) ||
-    item.description?.toLowerCase().includes(search.toLowerCase()) ||
-    item.businessUnitName?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = (incomeList?.data ?? [])
+    .filter(item =>
+      !search ||
+      item.invoiceNumber?.toLowerCase().includes(search.toLowerCase()) ||
+      item.customerName?.toLowerCase().includes(search.toLowerCase()) ||
+      item.description?.toLowerCase().includes(search.toLowerCase()) ||
+      item.businessUnitName?.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === "date")   cmp = new Date(a.date).getTime() - new Date(b.date).getTime();
+      if (sortBy === "amount") cmp = (a.amount ?? 0) - (b.amount ?? 0);
+      if (sortBy === "status") cmp = (a.status ?? "").localeCompare(b.status ?? "");
+      return sortDir === "asc" ? cmp : -cmp;
+    });
 
   return (
     <Card className="border-none shadow-sm">
-      <div className="p-4 border-b bg-card flex flex-col sm:flex-row gap-4 justify-between items-center rounded-t-xl">
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Cari invoice, customer, deskripsi..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-background border-input"
-          />
+      <div className="p-4 border-b bg-card flex flex-col sm:flex-row gap-3 justify-between items-center rounded-t-xl">
+        {/* Search + Sort controls */}
+        <div className="flex items-center gap-2 w-full sm:flex-1">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cari invoice, customer, deskripsi..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 bg-background border-input"
+            />
+          </div>
+          {/* Sort field */}
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+            <SelectTrigger className="w-[150px] bg-background shrink-0">
+              <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date">Tanggal</SelectItem>
+              <SelectItem value="amount">Jumlah</SelectItem>
+              <SelectItem value="status">Status</SelectItem>
+            </SelectContent>
+          </Select>
+          {/* Sort direction toggle */}
+          <button
+            type="button"
+            onClick={() => setSortDir(d => d === "asc" ? "desc" : "asc")}
+            title={sortDir === "asc" ? "Urutan: Terkecil dulu" : "Urutan: Terbesar dulu"}
+            className="h-9 w-9 flex items-center justify-center rounded-md border bg-background hover:bg-muted transition-colors shrink-0"
+          >
+            {sortDir === "asc"
+              ? <ArrowUp className="w-4 h-4 text-primary" />
+              : <ArrowDown className="w-4 h-4 text-primary" />}
+          </button>
         </div>
         <Sheet open={isAddOpen} onOpenChange={(v) => { setIsAddOpen(v); if (!v) resetForm(); }}>
           <SheetTrigger asChild>
@@ -476,7 +514,7 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
                           <SelectItem value="none">— Tidak ada —</SelectItem>
                           {(customers?.data ?? []).map(c => (
                             <SelectItem key={c.id} value={c.id.toString()}>
-                              {c.name}
+                              {c.fullName}
                               {c.businessName ? <span className="text-muted-foreground ml-1 text-xs">· {c.businessName}</span> : null}
                             </SelectItem>
                           ))}
@@ -693,6 +731,8 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
 
 function ExpenseTab({ buFilter, businessUnits }: { buFilter: number | null; businessUnits: { id: number; name: string }[] }) {
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"date" | "amount">("date");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const { data: expenseList, isLoading } = useListExpenses({ businessUnitId: buFilter ?? undefined });
   const createExpense = useCreateExpense();
   const queryClient = useQueryClient();
@@ -765,25 +805,57 @@ function ExpenseTab({ buFilter, businessUnits }: { buFilter: number | null; busi
     }
   }
 
-  const filtered = (expenseList?.data ?? []).filter(item =>
-    !search ||
-    item.receiptNumber?.toLowerCase().includes(search.toLowerCase()) ||
-    item.vendor?.toLowerCase().includes(search.toLowerCase()) ||
-    item.description?.toLowerCase().includes(search.toLowerCase()) ||
-    item.businessUnitName?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = (expenseList?.data ?? [])
+    .filter(item =>
+      !search ||
+      item.receiptNumber?.toLowerCase().includes(search.toLowerCase()) ||
+      item.vendor?.toLowerCase().includes(search.toLowerCase()) ||
+      item.description?.toLowerCase().includes(search.toLowerCase()) ||
+      item.businessUnitName?.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === "date")   cmp = new Date(a.date).getTime() - new Date(b.date).getTime();
+      if (sortBy === "amount") cmp = (a.amount ?? 0) - (b.amount ?? 0);
+      return sortDir === "asc" ? cmp : -cmp;
+    });
 
   return (
     <Card className="border-none shadow-sm">
-      <div className="p-4 border-b bg-card flex flex-col sm:flex-row gap-4 justify-between items-center rounded-t-xl">
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Cari vendor, receipt, deskripsi..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-background border-input"
-          />
+      <div className="p-4 border-b bg-card flex flex-col sm:flex-row gap-3 justify-between items-center rounded-t-xl">
+        {/* Search + Sort controls */}
+        <div className="flex items-center gap-2 w-full sm:flex-1">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cari vendor, receipt, deskripsi..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 bg-background border-input"
+            />
+          </div>
+          {/* Sort field */}
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+            <SelectTrigger className="w-[140px] bg-background shrink-0">
+              <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date">Tanggal</SelectItem>
+              <SelectItem value="amount">Jumlah</SelectItem>
+            </SelectContent>
+          </Select>
+          {/* Sort direction toggle */}
+          <button
+            type="button"
+            onClick={() => setSortDir(d => d === "asc" ? "desc" : "asc")}
+            title={sortDir === "asc" ? "Urutan: Terkecil dulu" : "Urutan: Terbesar dulu"}
+            className="h-9 w-9 flex items-center justify-center rounded-md border bg-background hover:bg-muted transition-colors shrink-0"
+          >
+            {sortDir === "asc"
+              ? <ArrowUp className="w-4 h-4 text-primary" />
+              : <ArrowDown className="w-4 h-4 text-primary" />}
+          </button>
         </div>
         <Sheet open={isAddOpen} onOpenChange={(v) => { setIsAddOpen(v); if (!v) resetForm(); }}>
           <SheetTrigger asChild>
