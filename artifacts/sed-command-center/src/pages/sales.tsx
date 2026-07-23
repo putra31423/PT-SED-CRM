@@ -1,5 +1,9 @@
 import { useState } from "react";
-import { useListDeals, useGetPipelineSummary, useUpdateDeal } from "@workspace/api-client-react";
+import {
+  useListDeals, useGetPipelineSummary, useUpdateDeal,
+  getListDealsQueryKey, getGetPipelineSummaryQueryKey,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatIDR } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,38 +15,66 @@ const STAGES = ["Lead", "Qualified", "Proposal", "Negotiation", "Won", "Lost"] a
 type Stage = typeof STAGES[number];
 
 export default function SalesPipeline() {
+  const queryClient = useQueryClient();
   const { data: summary } = useGetPipelineSummary();
   const { data: deals, isLoading } = useListDeals();
   const updateDeal = useUpdateDeal();
-  
+
   const [draggedDealId, setDraggedDealId] = useState<number | null>(null);
+  const [dragOverStage, setDragOverStage] = useState<Stage | null>(null);
 
   const handleDragStart = (e: React.DragEvent, id: number) => {
     setDraggedDealId(id);
     e.dataTransfer.effectAllowed = "move";
-    // For firefox compatibility
     e.dataTransfer.setData("text/plain", id.toString());
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: React.DragEvent, stage: Stage) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
+    setDragOverStage(stage);
   };
+
+  const handleDragLeave = () => setDragOverStage(null);
 
   const handleDrop = (e: React.DragEvent, stage: Stage) => {
     e.preventDefault();
+    setDragOverStage(null);
     if (draggedDealId === null) return;
 
-    const deal = deals?.find(d => d.id === draggedDealId);
-    if (deal && deal.stage !== stage) {
-      // Optimistic visual update (the query cache should ideally be updated, but for simplicity here the refetch will handle it)
-      updateDeal.mutate({ id: draggedDealId, data: { stage } }, {
-        onSuccess: () => {
-          // Normally we invalidate here, but we rely on the parent component or just auto refetch.
-          // In a real app we'd use queryClient.setQueryData.
-        }
-      });
+    const dealsKey = getListDealsQueryKey();
+    const summaryKey = getGetPipelineSummaryQueryKey();
+
+    const previousDeals = queryClient.getQueryData(dealsKey);
+    const previousSummary = queryClient.getQueryData(summaryKey);
+
+    const deal = (deals ?? []).find(d => d.id === draggedDealId);
+    if (!deal || deal.stage === stage) {
+      setDraggedDealId(null);
+      return;
     }
+
+    // Optimistic update — move the card immediately in the cache
+    queryClient.setQueryData(dealsKey, (old: typeof deals) =>
+      (old ?? []).map(d => d.id === draggedDealId ? { ...d, stage } : d)
+    );
+
+    updateDeal.mutate(
+      { id: draggedDealId, data: { stage } },
+      {
+        onSuccess: () => {
+          // Refetch both to get server-confirmed data + updated pipeline totals
+          queryClient.invalidateQueries({ queryKey: dealsKey });
+          queryClient.invalidateQueries({ queryKey: summaryKey });
+        },
+        onError: () => {
+          // Roll back on failure
+          queryClient.setQueryData(dealsKey, previousDeals);
+          queryClient.setQueryData(summaryKey, previousSummary);
+        },
+      }
+    );
+
     setDraggedDealId(null);
   };
 
@@ -114,10 +146,15 @@ export default function SalesPipeline() {
             const stageTotal = stageDeals.reduce((sum, d) => sum + d.value, 0);
 
             return (
-              <div 
-                key={stage} 
-                className="flex flex-col w-80 shrink-0 bg-muted/40 rounded-xl overflow-hidden border"
-                onDragOver={handleDragOver}
+              <div
+                key={stage}
+                className={`flex flex-col w-80 shrink-0 rounded-xl overflow-hidden border transition-colors ${
+                  dragOverStage === stage
+                    ? "bg-primary/5 border-primary/40 ring-1 ring-primary/30"
+                    : "bg-muted/40"
+                }`}
+                onDragOver={(e) => handleDragOver(e, stage as Stage)}
+                onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, stage as Stage)}
               >
                 <div className="p-3 border-b bg-card flex justify-between items-center shrink-0">
