@@ -1,20 +1,33 @@
 import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useListIncome, useListExpenses, useGetProfitLoss, useGetCashflowDetail, useListBusinessUnits } from "@workspace/api-client-react";
+import {
+  useListIncome, useListExpenses, useGetProfitLoss, useGetCashflowDetail,
+  useListBusinessUnits, useListCustomers, useCreateIncome, useCreateExpense,
+  getListIncomeQueryKey, getListExpensesQueryKey,
+  getGetDashboardSummaryQueryKey, getGetDashboardRevenueChartQueryKey,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger, SheetFooter } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
 import { formatIDR } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Calendar as CalendarIcon, Download, FileSpreadsheet, ChevronDown, TrendingUp, TrendingDown, Wallet, ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { AreaChart, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line } from "recharts";
+
+const INCOME_CATEGORIES = ["Service", "Product", "Consultation", "License", "Commission", "Rental", "Other"] as const;
+const EXPENSE_CATEGORIES = ["Operational", "Salary", "Marketing", "Equipment", "Office", "Travel", "Tax", "Other"] as const;
+const PAYMENT_METHODS = ["Transfer Bank", "Cash", "Cek", "Kartu Kredit", "QRIS"] as const;
 
 // ── CSV / Export helpers ─────────────────────────────────────────────────────
 function toCSV(rows: Record<string, unknown>[], columns: { key: string; label: string }[]): string {
@@ -201,78 +214,284 @@ export default function FinanceHub() {
 
 function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; businessUnits: { id: number; name: string }[] }) {
   const [search, setSearch] = useState("");
-  const { data: incomeList, isLoading } = useListIncome({ businessUnitId: buFilter });
+  const { data: incomeList, isLoading } = useListIncome({ businessUnitId: buFilter ?? undefined });
+  const { data: customers } = useListCustomers();
+  const createIncome = useCreateIncome();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const [form, setForm] = useState({
+    date: today,
+    amount: "",
+    businessUnitId: buFilter ? buFilter.toString() : "",
+    customerId: "",
+    invoiceNumber: "",
+    category: "",
+    paymentMethod: "",
+    status: "Received",
+    tax: "",
+    description: "",
+  });
+
+  function resetForm() {
+    setForm({
+      date: new Date().toISOString().slice(0, 10),
+      amount: "",
+      businessUnitId: buFilter ? buFilter.toString() : "",
+      customerId: "",
+      invoiceNumber: "",
+      category: "",
+      paymentMethod: "",
+      status: "Received",
+      tax: "",
+      description: "",
+    });
+  }
+
+  function setF(key: keyof typeof form, value: string) {
+    setForm(prev => ({ ...prev, [key]: value }));
+  }
+
+  async function handleSave() {
+    if (!form.date || !form.amount) {
+      toast({ title: "Validasi gagal", description: "Tanggal dan jumlah wajib diisi.", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      await createIncome.mutateAsync({
+        data: {
+          date: form.date,
+          amount: parseFloat(form.amount),
+          businessUnitId: form.businessUnitId ? parseInt(form.businessUnitId) : undefined,
+          customerId: form.customerId ? parseInt(form.customerId) : undefined,
+          invoiceNumber: form.invoiceNumber || undefined,
+          category: form.category || undefined,
+          paymentMethod: form.paymentMethod || undefined,
+          status: (form.status as "Received" | "Pending" | "Cancelled") || "Received",
+          tax: form.tax ? parseFloat(form.tax) : undefined,
+          description: form.description || undefined,
+        },
+      });
+      // Invalidate income list + dashboard caches for instant sync
+      queryClient.invalidateQueries({ queryKey: getListIncomeQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetDashboardRevenueChartQueryKey() });
+      toast({ title: "Income berhasil dicatat ✓" });
+      resetForm();
+      setIsAddOpen(false);
+    } catch {
+      toast({ title: "Gagal menyimpan income", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const filtered = (incomeList?.data ?? []).filter(item =>
+    !search ||
+    item.invoiceNumber?.toLowerCase().includes(search.toLowerCase()) ||
+    item.customerName?.toLowerCase().includes(search.toLowerCase()) ||
+    item.description?.toLowerCase().includes(search.toLowerCase()) ||
+    item.businessUnitName?.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <Card className="border-none shadow-sm">
       <div className="p-4 border-b bg-card flex flex-col sm:flex-row gap-4 justify-between items-center rounded-t-xl">
         <div className="relative w-full sm:w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search invoice, customer, or desc..." 
+          <Input
+            placeholder="Cari invoice, customer, deskripsi..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 bg-background border-input"
           />
         </div>
-        <Sheet open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <Sheet open={isAddOpen} onOpenChange={(v) => { setIsAddOpen(v); if (!v) resetForm(); }}>
           <SheetTrigger asChild>
             <Button className="shrink-0 bg-green-600 hover:bg-green-700 text-white">
               <Plus className="w-4 h-4 mr-2" />
               Record Income
             </Button>
           </SheetTrigger>
-          <SheetContent className="sm:max-w-md overflow-y-auto">
-            <SheetHeader>
-              <SheetTitle>Record New Income</SheetTitle>
+          <SheetContent className="sm:max-w-[480px] flex flex-col overflow-hidden p-0">
+            <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+              <SheetTitle>Catat Pemasukan Baru</SheetTitle>
+              <SheetDescription>Isi detail transaksi income dan tekan Simpan.</SheetDescription>
             </SheetHeader>
-            <div className="grid gap-6 py-6">
-              {/* Form fields mockup */}
-              <div className="space-y-4">
-                <div className="grid gap-2"><label className="text-sm font-medium">Amount</label><Input type="number" placeholder="Rp 0" /></div>
-                <div className="grid gap-2"><label className="text-sm font-medium">Date</label><Input type="date" /></div>
-                <div className="grid gap-2"><label className="text-sm font-medium">Business Unit</label><Select><SelectTrigger><SelectValue placeholder="Pilih Business Unit" /></SelectTrigger><SelectContent>{businessUnits.map(bu => (<SelectItem key={bu.id} value={bu.id.toString()}>{bu.name}</SelectItem>))}</SelectContent></Select></div>
-                <div className="grid gap-2"><label className="text-sm font-medium">Description</label><Input placeholder="Invoice payment..." /></div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+              {/* Jumlah & Tanggal */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Jumlah (IDR) <span className="text-destructive">*</span></Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={form.amount}
+                    onChange={(e) => setF("amount", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Tanggal <span className="text-destructive">*</span></Label>
+                  <Input type="date" value={form.date} onChange={(e) => setF("date", e.target.value)} />
+                </div>
               </div>
-              <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => setIsAddOpen(false)}>Save Income</Button>
+
+              <Separator />
+
+              {/* Business Unit & Customer */}
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Business Unit</Label>
+                  <Select value={form.businessUnitId} onValueChange={(v) => setF("businessUnitId", v)}>
+                    <SelectTrigger><SelectValue placeholder="Pilih Business Unit" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Tidak ada —</SelectItem>
+                      {businessUnits.map(bu => (
+                        <SelectItem key={bu.id} value={bu.id.toString()}>{bu.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Customer</Label>
+                  <Select value={form.customerId} onValueChange={(v) => setF("customerId", v)}>
+                    <SelectTrigger><SelectValue placeholder="Pilih Customer (opsional)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— Tidak ada —</SelectItem>
+                      {(customers ?? []).map(c => (
+                        <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Invoice & Category */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>No. Invoice</Label>
+                  <Input placeholder="INV-2026-001" value={form.invoiceNumber} onChange={(e) => setF("invoiceNumber", e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Kategori</Label>
+                  <Select value={form.category} onValueChange={(v) => setF("category", v)}>
+                    <SelectTrigger><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
+                    <SelectContent>
+                      {INCOME_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Payment Method & Status */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Metode Pembayaran</Label>
+                  <Select value={form.paymentMethod} onValueChange={(v) => setF("paymentMethod", v)}>
+                    <SelectTrigger><SelectValue placeholder="Pilih metode" /></SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHODS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Status</Label>
+                  <Select value={form.status} onValueChange={(v) => setF("status", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Received">Received</SelectItem>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="Cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Tax & Description */}
+              <div className="space-y-1.5">
+                <Label>Pajak / Tax (IDR)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={form.tax}
+                  onChange={(e) => setF("tax", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Deskripsi</Label>
+                <Textarea
+                  placeholder="Keterangan transaksi..."
+                  value={form.description}
+                  onChange={(e) => setF("description", e.target.value)}
+                  rows={3}
+                />
+              </div>
             </div>
+
+            <SheetFooter className="px-6 py-4 border-t shrink-0 flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setIsAddOpen(false)} disabled={saving}>
+                Batal
+              </Button>
+              <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={handleSave} disabled={saving}>
+                {saving ? "Menyimpan..." : "Simpan Income"}
+              </Button>
+            </SheetFooter>
           </SheetContent>
         </Sheet>
       </div>
-      
+
       <div className="overflow-x-auto">
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
-              <TableHead>Date</TableHead>
+              <TableHead>Tanggal</TableHead>
               <TableHead>Invoice #</TableHead>
               <TableHead>Business Unit</TableHead>
               <TableHead>Customer</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
+              <TableHead>Kategori</TableHead>
+              <TableHead className="text-right">Jumlah</TableHead>
               <TableHead className="text-right">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              Array.from({length: 5}).map((_, i) => (
+              Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell colSpan={7}><Skeleton className="h-10 w-full" /></TableCell>
                 </TableRow>
               ))
-            ) : incomeList?.data?.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell className="text-muted-foreground text-sm">{new Date(item.date).toLocaleDateString()}</TableCell>
+            ) : filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-12">
+                  {search ? "Tidak ada transaksi yang cocok." : "Belum ada data income."}
+                </TableCell>
+              </TableRow>
+            ) : filtered.map((item) => (
+              <TableRow key={item.id} className="hover:bg-muted/30">
+                <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                  {new Date(item.date).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                </TableCell>
                 <TableCell className="font-medium">{item.invoiceNumber || "—"}</TableCell>
-                <TableCell>{item.businessUnitName || "—"}</TableCell>
-                <TableCell>{item.customerName || "—"}</TableCell>
-                <TableCell><Badge variant="secondary" className="bg-secondary/10">{item.category || "General"}</Badge></TableCell>
-                <TableCell className="text-right font-bold text-green-600">{formatIDR(item.amount)}</TableCell>
+                <TableCell className="text-sm">{item.businessUnitName || "—"}</TableCell>
+                <TableCell className="text-sm">{item.customerName || "—"}</TableCell>
+                <TableCell>
+                  <Badge variant="secondary" className="bg-secondary/10">{item.category || "General"}</Badge>
+                </TableCell>
+                <TableCell className="text-right font-bold text-green-600 whitespace-nowrap">{formatIDR(item.amount)}</TableCell>
                 <TableCell className="text-right">
                   <Badge variant="outline" className={
-                    item.status === 'Received' ? 'border-green-200 text-green-700 bg-green-50' : 
-                    item.status === 'Pending' ? 'border-amber-200 text-amber-700 bg-amber-50' : ''
+                    item.status === "Received" ? "border-green-200 text-green-700 bg-green-50" :
+                    item.status === "Pending" ? "border-amber-200 text-amber-700 bg-amber-50" :
+                    "border-red-200 text-red-700 bg-red-50"
                   }>
                     {item.status}
                   </Badge>
@@ -288,73 +507,253 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
 
 function ExpenseTab({ buFilter, businessUnits }: { buFilter: number | null; businessUnits: { id: number; name: string }[] }) {
   const [search, setSearch] = useState("");
-  const { data: expenseList, isLoading } = useListExpenses({ businessUnitId: buFilter });
+  const { data: expenseList, isLoading } = useListExpenses({ businessUnitId: buFilter ?? undefined });
+  const createExpense = useCreateExpense();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const [form, setForm] = useState({
+    date: today,
+    amount: "",
+    businessUnitId: buFilter ? buFilter.toString() : "",
+    vendor: "",
+    receiptNumber: "",
+    category: "",
+    paymentMethod: "",
+    tax: "",
+    description: "",
+  });
+
+  function resetForm() {
+    setForm({
+      date: new Date().toISOString().slice(0, 10),
+      amount: "",
+      businessUnitId: buFilter ? buFilter.toString() : "",
+      vendor: "",
+      receiptNumber: "",
+      category: "",
+      paymentMethod: "",
+      tax: "",
+      description: "",
+    });
+  }
+
+  function setF(key: keyof typeof form, value: string) {
+    setForm(prev => ({ ...prev, [key]: value }));
+  }
+
+  async function handleSave() {
+    if (!form.date || !form.amount) {
+      toast({ title: "Validasi gagal", description: "Tanggal dan jumlah wajib diisi.", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      await createExpense.mutateAsync({
+        data: {
+          date: form.date,
+          amount: parseFloat(form.amount),
+          businessUnitId: form.businessUnitId ? parseInt(form.businessUnitId) : undefined,
+          vendor: form.vendor || undefined,
+          receiptNumber: form.receiptNumber || undefined,
+          category: form.category || undefined,
+          paymentMethod: form.paymentMethod || undefined,
+          tax: form.tax ? parseFloat(form.tax) : undefined,
+          description: form.description || undefined,
+        },
+      });
+      // Invalidate expense list + dashboard caches for instant sync
+      queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetDashboardRevenueChartQueryKey() });
+      toast({ title: "Expense berhasil dicatat ✓" });
+      resetForm();
+      setIsAddOpen(false);
+    } catch {
+      toast({ title: "Gagal menyimpan expense", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const filtered = (expenseList?.data ?? []).filter(item =>
+    !search ||
+    item.receiptNumber?.toLowerCase().includes(search.toLowerCase()) ||
+    item.vendor?.toLowerCase().includes(search.toLowerCase()) ||
+    item.description?.toLowerCase().includes(search.toLowerCase()) ||
+    item.businessUnitName?.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <Card className="border-none shadow-sm">
       <div className="p-4 border-b bg-card flex flex-col sm:flex-row gap-4 justify-between items-center rounded-t-xl">
         <div className="relative w-full sm:w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search vendor, receipt, or desc..." 
+          <Input
+            placeholder="Cari vendor, receipt, deskripsi..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9 bg-background border-input"
           />
         </div>
-        <Sheet open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <Sheet open={isAddOpen} onOpenChange={(v) => { setIsAddOpen(v); if (!v) resetForm(); }}>
           <SheetTrigger asChild>
             <Button className="shrink-0 bg-red-600 hover:bg-red-700 text-white">
               <Plus className="w-4 h-4 mr-2" />
               Record Expense
             </Button>
           </SheetTrigger>
-          <SheetContent className="sm:max-w-md overflow-y-auto">
-            <SheetHeader>
-              <SheetTitle>Record New Expense</SheetTitle>
+          <SheetContent className="sm:max-w-[480px] flex flex-col overflow-hidden p-0">
+            <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+              <SheetTitle>Catat Pengeluaran Baru</SheetTitle>
+              <SheetDescription>Isi detail transaksi expense dan tekan Simpan.</SheetDescription>
             </SheetHeader>
-            <div className="grid gap-6 py-6">
-              <div className="space-y-4">
-                <div className="grid gap-2"><label className="text-sm font-medium">Amount</label><Input type="number" placeholder="Rp 0" /></div>
-                <div className="grid gap-2"><label className="text-sm font-medium">Date</label><Input type="date" /></div>
-                <div className="grid gap-2"><label className="text-sm font-medium">Business Unit</label><Select><SelectTrigger><SelectValue placeholder="Pilih Business Unit" /></SelectTrigger><SelectContent>{businessUnits.map(bu => (<SelectItem key={bu.id} value={bu.id.toString()}>{bu.name}</SelectItem>))}</SelectContent></Select></div>
-                <div className="grid gap-2"><label className="text-sm font-medium">Vendor</label><Input placeholder="Supplier name..." /></div>
-                <div className="grid gap-2"><label className="text-sm font-medium">Description</label><Input placeholder="Office supplies..." /></div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+              {/* Jumlah & Tanggal */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Jumlah (IDR) <span className="text-destructive">*</span></Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="0"
+                    value={form.amount}
+                    onChange={(e) => setF("amount", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Tanggal <span className="text-destructive">*</span></Label>
+                  <Input type="date" value={form.date} onChange={(e) => setF("date", e.target.value)} />
+                </div>
               </div>
-              <Button className="w-full bg-red-600 hover:bg-red-700" onClick={() => setIsAddOpen(false)}>Save Expense</Button>
+
+              <Separator />
+
+              {/* Business Unit */}
+              <div className="space-y-1.5">
+                <Label>Business Unit</Label>
+                <Select value={form.businessUnitId} onValueChange={(v) => setF("businessUnitId", v)}>
+                  <SelectTrigger><SelectValue placeholder="Pilih Business Unit" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Tidak ada —</SelectItem>
+                    {businessUnits.map(bu => (
+                      <SelectItem key={bu.id} value={bu.id.toString()}>{bu.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Separator />
+
+              {/* Vendor & Receipt */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Vendor / Supplier</Label>
+                  <Input placeholder="Nama vendor..." value={form.vendor} onChange={(e) => setF("vendor", e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>No. Receipt</Label>
+                  <Input placeholder="RCP-2026-001" value={form.receiptNumber} onChange={(e) => setF("receiptNumber", e.target.value)} />
+                </div>
+              </div>
+
+              {/* Category & Payment */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Kategori</Label>
+                  <Select value={form.category} onValueChange={(v) => setF("category", v)}>
+                    <SelectTrigger><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
+                    <SelectContent>
+                      {EXPENSE_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Metode Pembayaran</Label>
+                  <Select value={form.paymentMethod} onValueChange={(v) => setF("paymentMethod", v)}>
+                    <SelectTrigger><SelectValue placeholder="Pilih metode" /></SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHODS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Tax & Description */}
+              <div className="space-y-1.5">
+                <Label>Pajak / Tax (IDR)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={form.tax}
+                  onChange={(e) => setF("tax", e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Deskripsi</Label>
+                <Textarea
+                  placeholder="Keterangan pengeluaran..."
+                  value={form.description}
+                  onChange={(e) => setF("description", e.target.value)}
+                  rows={3}
+                />
+              </div>
             </div>
+
+            <SheetFooter className="px-6 py-4 border-t shrink-0 flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setIsAddOpen(false)} disabled={saving}>
+                Batal
+              </Button>
+              <Button className="flex-1 bg-red-600 hover:bg-red-700" onClick={handleSave} disabled={saving}>
+                {saving ? "Menyimpan..." : "Simpan Expense"}
+              </Button>
+            </SheetFooter>
           </SheetContent>
         </Sheet>
       </div>
-      
+
       <div className="overflow-x-auto">
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
-              <TableHead>Date</TableHead>
+              <TableHead>Tanggal</TableHead>
               <TableHead>Receipt #</TableHead>
               <TableHead>Business Unit</TableHead>
               <TableHead>Vendor</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
+              <TableHead>Kategori</TableHead>
+              <TableHead className="text-right">Jumlah</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              Array.from({length: 5}).map((_, i) => (
+              Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell colSpan={6}><Skeleton className="h-10 w-full" /></TableCell>
                 </TableRow>
               ))
-            ) : expenseList?.data?.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell className="text-muted-foreground text-sm">{new Date(item.date).toLocaleDateString()}</TableCell>
+            ) : filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
+                  {search ? "Tidak ada transaksi yang cocok." : "Belum ada data expense."}
+                </TableCell>
+              </TableRow>
+            ) : filtered.map((item) => (
+              <TableRow key={item.id} className="hover:bg-muted/30">
+                <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                  {new Date(item.date).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                </TableCell>
                 <TableCell className="font-medium">{item.receiptNumber || "—"}</TableCell>
-                <TableCell>{item.businessUnitName || "—"}</TableCell>
-                <TableCell>{item.vendor || "—"}</TableCell>
-                <TableCell><Badge variant="secondary" className="bg-secondary/10">{item.category || "General"}</Badge></TableCell>
-                <TableCell className="text-right font-bold text-red-600">{formatIDR(item.amount)}</TableCell>
+                <TableCell className="text-sm">{item.businessUnitName || "—"}</TableCell>
+                <TableCell className="text-sm">{item.vendor || "—"}</TableCell>
+                <TableCell>
+                  <Badge variant="secondary" className="bg-secondary/10">{item.category || "General"}</Badge>
+                </TableCell>
+                <TableCell className="text-right font-bold text-red-600 whitespace-nowrap">{formatIDR(item.amount)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
