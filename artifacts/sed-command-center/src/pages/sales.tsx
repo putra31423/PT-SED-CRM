@@ -1,6 +1,6 @@
 import { useState } from "react";
 import {
-  useListDeals, useGetPipelineSummary, useUpdateDeal, useListBusinessUnits,
+  useListDeals, useGetPipelineSummary, useUpdateDeal, useCreateDeal, useListBusinessUnits,
   getListDealsQueryKey, getGetPipelineSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -15,8 +15,10 @@ import { Label } from "@/components/ui/label";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle,
+  Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFooter,
 } from "@/components/ui/sheet";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -60,9 +62,57 @@ export default function SalesPipeline() {
   const { data: deals, isLoading } = useListDeals();
   const { data: businessUnits } = useListBusinessUnits();
   const updateDeal = useUpdateDeal();
+  const createDeal = useCreateDeal();
 
   const [draggedDealId, setDraggedDealId] = useState<number | null>(null);
   const [dragOverStage, setDragOverStage] = useState<Stage | null>(null);
+
+  // New Deal sheet state
+  const [isNewOpen, setIsNewOpen] = useState(false);
+  const [newSaving, setNewSaving] = useState(false);
+  const emptyForm: EditForm = {
+    title: "", stage: "Lead", value: "", probability: "50",
+    assignedStaff: "", expectedCloseDate: "", description: "", notes: "", businessUnitId: "",
+  };
+  const [newForm, setNewForm] = useState<EditForm>(emptyForm);
+
+  function setNF(key: keyof EditForm, value: string) {
+    setNewForm(prev => ({ ...prev, [key]: value }));
+  }
+
+  async function handleNewSave() {
+    if (!newForm.title.trim()) {
+      toast({ title: "Validasi gagal", description: "Judul deal wajib diisi.", variant: "destructive" });
+      return;
+    }
+    setNewSaving(true);
+    try {
+      await createDeal.mutateAsync({
+        data: {
+          title: newForm.title.trim(),
+          stage: newForm.stage as any,
+          value: newForm.value ? parseFloat(newForm.value) : 0,
+          probability: newForm.probability ? parseInt(newForm.probability) : undefined,
+          assignedStaff: newForm.assignedStaff || undefined,
+          expectedCloseDate: newForm.expectedCloseDate || undefined,
+          description: newForm.description || undefined,
+          notes: newForm.notes || undefined,
+          businessUnitId: newForm.businessUnitId ? parseInt(newForm.businessUnitId) : undefined,
+        },
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListDealsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetPipelineSummaryQueryKey() }),
+      ]);
+      toast({ title: "Deal berhasil ditambahkan ✓" });
+      setNewForm(emptyForm);
+      setIsNewOpen(false);
+    } catch {
+      toast({ title: "Gagal menyimpan deal", variant: "destructive" });
+    } finally {
+      setNewSaving(false);
+    }
+  }
 
   // Edit sheet state
   const [editDeal, setEditDeal] = useState<Deal | null>(null);
@@ -227,7 +277,7 @@ export default function SalesPipeline() {
             <h2 className="text-3xl font-bold tracking-tight text-foreground">Sales Pipeline</h2>
             <p className="text-muted-foreground">Manage deals and opportunities across all stages.</p>
           </div>
-          <Button className="shrink-0 bg-primary hover:bg-primary/90">
+          <Button className="shrink-0 bg-primary hover:bg-primary/90" onClick={() => { setNewForm(emptyForm); setIsNewOpen(true); }}>
             <Target className="w-4 h-4 mr-2" />
             New Deal
           </Button>
@@ -503,6 +553,132 @@ export default function SalesPipeline() {
               </Button>
             </div>
           )}
+        </SheetContent>
+      </Sheet>
+
+      {/* ── New Deal Sheet ──────────────────────────────────────────────────── */}
+      <Sheet open={isNewOpen} onOpenChange={(o) => { if (!o) setIsNewOpen(false); }}>
+        <SheetContent className="sm:max-w-[480px] flex flex-col overflow-hidden p-0">
+          <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+            <SheetTitle>New Deal</SheetTitle>
+            <SheetDescription>Tambahkan peluang baru ke pipeline sales.</SheetDescription>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+            {/* Title */}
+            <div className="space-y-1.5">
+              <Label>Judul Deal <span className="text-destructive">*</span></Label>
+              <Input
+                value={newForm.title}
+                onChange={e => setNF("title", e.target.value)}
+                placeholder="e.g. Website Redesign – PT ABC"
+                autoFocus
+              />
+            </div>
+
+            <Separator />
+
+            {/* Stage & Value */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Stage</Label>
+                <Select value={newForm.stage} onValueChange={v => setNF("stage", v)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {STAGES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Nilai (IDR)</Label>
+                <Input
+                  type="number"
+                  value={newForm.value}
+                  onChange={e => setNF("value", e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            {/* Probability & Close Date */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Probabilitas (%)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={newForm.probability}
+                  onChange={e => setNF("probability", e.target.value)}
+                  placeholder="50"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Target Close</Label>
+                <Input
+                  type="date"
+                  value={newForm.expectedCloseDate}
+                  onChange={e => setNF("expectedCloseDate", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Business Unit */}
+            <div className="space-y-1.5">
+              <Label>Business Unit</Label>
+              <Select value={newForm.businessUnitId} onValueChange={v => setNF("businessUnitId", v)}>
+                <SelectTrigger><SelectValue placeholder="Pilih Business Unit" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Tidak ada —</SelectItem>
+                  {(businessUnits ?? []).map(bu => (
+                    <SelectItem key={bu.id} value={String(bu.id)}>{bu.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Assigned Staff */}
+            <div className="space-y-1.5">
+              <Label>Assigned Staff</Label>
+              <Input
+                value={newForm.assignedStaff}
+                onChange={e => setNF("assignedStaff", e.target.value)}
+                placeholder="Nama sales / PIC..."
+              />
+            </div>
+
+            <Separator />
+
+            {/* Description & Notes */}
+            <div className="space-y-1.5">
+              <Label>Deskripsi</Label>
+              <Textarea
+                value={newForm.description}
+                onChange={e => setNF("description", e.target.value)}
+                placeholder="Detail peluang, kebutuhan klien..."
+                rows={2}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Catatan Internal</Label>
+              <Textarea
+                value={newForm.notes}
+                onChange={e => setNF("notes", e.target.value)}
+                placeholder="Catatan tim..."
+                rows={2}
+              />
+            </div>
+          </div>
+
+          <SheetFooter className="px-6 py-4 border-t shrink-0 flex gap-2">
+            <Button variant="outline" className="flex-1" onClick={() => setIsNewOpen(false)} disabled={newSaving}>
+              Batal
+            </Button>
+            <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={handleNewSave} disabled={newSaving}>
+              {newSaving ? "Menyimpan..." : "Tambah Deal"}
+            </Button>
+          </SheetFooter>
         </SheetContent>
       </Sheet>
     </>
