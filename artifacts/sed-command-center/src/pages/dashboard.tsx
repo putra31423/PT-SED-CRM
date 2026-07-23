@@ -9,7 +9,8 @@ import {
   CreditCard, 
   Activity, 
   Users, 
-  Briefcase 
+  Briefcase,
+  ChevronRight,
 } from "lucide-react";
 import {
   BarChart,
@@ -23,6 +24,7 @@ import {
   Area
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "wouter";
 
 export default function Dashboard() {
   const { data: summary, isLoading: isLoadingSummary } = useGetDashboardSummary();
@@ -30,12 +32,24 @@ export default function Dashboard() {
   const { data: topBU, isLoading: isLoadingTop } = useGetTopBusinessUnits();
   const { data: cashflow, isLoading: isLoadingCashflow } = useGetDashboardCashflow();
 
-  const renderKpiCard = (title: string, value: string | number, icon: any, subtext?: string, trend?: number) => {
-    return (
-      <Card className="hover-elevate transition-all border-none shadow-sm bg-card">
+  const renderKpiCard = (
+    title: string,
+    value: string | number,
+    icon: any,
+    subtext?: string,
+    trend?: number,
+    href?: string,
+  ) => {
+    const inner = (
+      <Card className={`transition-all border-none shadow-sm bg-card ${href ? "hover:shadow-md hover:-translate-y-0.5 cursor-pointer group" : "hover-elevate"}`}>
         <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
           <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-          {icon}
+          <div className="flex items-center gap-1">
+            {icon}
+            {href && (
+              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity -mr-1" />
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold text-foreground">
@@ -55,6 +69,11 @@ export default function Dashboard() {
         </CardContent>
       </Card>
     );
+
+    if (href) {
+      return <Link href={href} className="block">{inner}</Link>;
+    }
+    return inner;
   };
 
   return (
@@ -74,15 +93,15 @@ export default function Dashboard() {
         </div>
       ) : summary ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {renderKpiCard("Total Revenue (YTD)", summary.totalRevenue, <DollarSign className="h-4 w-4 text-primary" />, "vs last year", summary.revenueGrowth)}
-          {renderKpiCard("Net Profit", summary.netProfit, <TrendingUp className="h-4 w-4 text-green-500" />, "Margin", summary.profitMargin)}
-          {renderKpiCard("Cashflow", summary.cashflow, <Activity className="h-4 w-4 text-blue-500" />, "Operating cashflow")}
-          {renderKpiCard("Total Expenses", summary.totalExpenses, <CreditCard className="h-4 w-4 text-red-500" />, "vs last year", summary.expenseGrowth)}
-          
-          {renderKpiCard("Today's Revenue", summary.todayRevenue, <DollarSign className="h-4 w-4 text-primary" />, "Real-time")}
-          {renderKpiCard("Monthly Revenue", summary.monthlyRevenue, <Briefcase className="h-4 w-4 text-primary" />, "This month")}
-          {renderKpiCard("Active Customers", summary.totalCustomers, <Users className="h-4 w-4 text-blue-500" />, "Across all units")}
-          {renderKpiCard("Transactions", summary.totalTransactions.toLocaleString(), <Activity className="h-4 w-4 text-primary" />, "Total count")}
+          {renderKpiCard("Total Revenue (YTD)", summary.totalRevenue, <DollarSign className="h-4 w-4 text-primary" />, "vs last year", summary.revenueGrowth, "/finance/income")}
+          {renderKpiCard("Net Profit", summary.netProfit, <TrendingUp className="h-4 w-4 text-green-500" />, "Margin", summary.profitMargin, "/reports")}
+          {renderKpiCard("Cashflow", summary.cashflow, <Activity className="h-4 w-4 text-blue-500" />, "Operating cashflow", undefined, "/finance/cashflow")}
+          {renderKpiCard("Total Expenses", summary.totalExpenses, <CreditCard className="h-4 w-4 text-red-500" />, "vs last year", summary.expenseGrowth, "/finance/expenses")}
+
+          {renderKpiCard("Today's Revenue", summary.todayRevenue, <DollarSign className="h-4 w-4 text-primary" />, "Real-time", undefined, "/finance/income")}
+          {renderKpiCard("Monthly Revenue", summary.monthlyRevenue, <Briefcase className="h-4 w-4 text-primary" />, "This month", undefined, "/finance/income")}
+          {renderKpiCard("Active Customers", summary.totalCustomers, <Users className="h-4 w-4 text-blue-500" />, "Across all units", undefined, "/crm")}
+          {renderKpiCard("Transactions", summary.totalTransactions.toLocaleString(), <Activity className="h-4 w-4 text-primary" />, "Total count", undefined, "/finance/income")}
         </div>
       ) : null}
 
