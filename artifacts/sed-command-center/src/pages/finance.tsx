@@ -364,7 +364,7 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
                     <SelectTrigger><SelectValue placeholder="Pilih Customer (opsional)" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">— Tidak ada —</SelectItem>
-                      {(customers ?? []).map(c => (
+                      {(customers?.data ?? []).map(c => (
                         <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
                       ))}
                     </SelectContent>
