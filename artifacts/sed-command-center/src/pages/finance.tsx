@@ -61,10 +61,10 @@ export default function FinanceHub() {
         </TabsList>
 
         <TabsContent value="income" className="mt-0 outline-none">
-          <IncomeTab buFilter={buFilter === "all" ? null : parseInt(buFilter)} />
+          <IncomeTab buFilter={buFilter === "all" ? null : parseInt(buFilter)} businessUnits={businessUnits ?? []} />
         </TabsContent>
         <TabsContent value="expenses" className="mt-0 outline-none">
-          <ExpenseTab buFilter={buFilter === "all" ? null : parseInt(buFilter)} />
+          <ExpenseTab buFilter={buFilter === "all" ? null : parseInt(buFilter)} businessUnits={businessUnits ?? []} />
         </TabsContent>
         <TabsContent value="profit-loss" className="mt-0 outline-none">
           <ProfitLossTab buFilter={buFilter === "all" ? null : parseInt(buFilter)} />
@@ -77,7 +77,7 @@ export default function FinanceHub() {
   );
 }
 
-function IncomeTab({ buFilter }: { buFilter: number | null }) {
+function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; businessUnits: { id: number; name: string }[] }) {
   const [search, setSearch] = useState("");
   const { data: incomeList, isLoading } = useListIncome({ businessUnitId: buFilter });
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -110,7 +110,7 @@ function IncomeTab({ buFilter }: { buFilter: number | null }) {
               <div className="space-y-4">
                 <div className="grid gap-2"><label className="text-sm font-medium">Amount</label><Input type="number" placeholder="Rp 0" /></div>
                 <div className="grid gap-2"><label className="text-sm font-medium">Date</label><Input type="date" /></div>
-                <div className="grid gap-2"><label className="text-sm font-medium">Business Unit</label><Select><SelectTrigger><SelectValue placeholder="Select BU" /></SelectTrigger><SelectContent><SelectItem value="1">Media</SelectItem></SelectContent></Select></div>
+                <div className="grid gap-2"><label className="text-sm font-medium">Business Unit</label><Select><SelectTrigger><SelectValue placeholder="Pilih Business Unit" /></SelectTrigger><SelectContent>{businessUnits.map(bu => (<SelectItem key={bu.id} value={bu.id.toString()}>{bu.name}</SelectItem>))}</SelectContent></Select></div>
                 <div className="grid gap-2"><label className="text-sm font-medium">Description</label><Input placeholder="Invoice payment..." /></div>
               </div>
               <Button className="w-full bg-green-600 hover:bg-green-700" onClick={() => setIsAddOpen(false)}>Save Income</Button>
@@ -164,7 +164,7 @@ function IncomeTab({ buFilter }: { buFilter: number | null }) {
   );
 }
 
-function ExpenseTab({ buFilter }: { buFilter: number | null }) {
+function ExpenseTab({ buFilter, businessUnits }: { buFilter: number | null; businessUnits: { id: number; name: string }[] }) {
   const [search, setSearch] = useState("");
   const { data: expenseList, isLoading } = useListExpenses({ businessUnitId: buFilter });
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -196,7 +196,7 @@ function ExpenseTab({ buFilter }: { buFilter: number | null }) {
               <div className="space-y-4">
                 <div className="grid gap-2"><label className="text-sm font-medium">Amount</label><Input type="number" placeholder="Rp 0" /></div>
                 <div className="grid gap-2"><label className="text-sm font-medium">Date</label><Input type="date" /></div>
-                <div className="grid gap-2"><label className="text-sm font-medium">Business Unit</label><Select><SelectTrigger><SelectValue placeholder="Select BU" /></SelectTrigger><SelectContent><SelectItem value="1">Media</SelectItem></SelectContent></Select></div>
+                <div className="grid gap-2"><label className="text-sm font-medium">Business Unit</label><Select><SelectTrigger><SelectValue placeholder="Pilih Business Unit" /></SelectTrigger><SelectContent>{businessUnits.map(bu => (<SelectItem key={bu.id} value={bu.id.toString()}>{bu.name}</SelectItem>))}</SelectContent></Select></div>
                 <div className="grid gap-2"><label className="text-sm font-medium">Vendor</label><Input placeholder="Supplier name..." /></div>
                 <div className="grid gap-2"><label className="text-sm font-medium">Description</label><Input placeholder="Office supplies..." /></div>
               </div>
