@@ -9,10 +9,59 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatIDR } from "@/lib/utils";
-import { Plus, Search, Calendar as CalendarIcon, Download, TrendingUp, TrendingDown, Wallet, ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Plus, Search, Calendar as CalendarIcon, Download, FileSpreadsheet, ChevronDown, TrendingUp, TrendingDown, Wallet, ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { AreaChart, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line } from "recharts";
+
+// ── CSV / Export helpers ─────────────────────────────────────────────────────
+function toCSV(rows: Record<string, unknown>[], columns: { key: string; label: string }[]): string {
+  const header = columns.map(c => `"${c.label}"`).join(",");
+  const body = rows.map(row =>
+    columns.map(c => {
+      const v = row[c.key] ?? "";
+      return `"${String(v).replace(/"/g, '""')}"`;
+    }).join(",")
+  );
+  return [header, ...body].join("\n");
+}
+
+function downloadCSV(content: string, filename: string) {
+  const blob = new Blob(["\uFEFF" + content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+const INCOME_COLS = [
+  { key: "date", label: "Date" },
+  { key: "invoiceNumber", label: "Invoice #" },
+  { key: "businessUnitName", label: "Business Unit" },
+  { key: "customerName", label: "Customer" },
+  { key: "category", label: "Category" },
+  { key: "description", label: "Description" },
+  { key: "amount", label: "Amount (IDR)" },
+  { key: "tax", label: "Tax (IDR)" },
+  { key: "paymentMethod", label: "Payment Method" },
+  { key: "status", label: "Status" },
+];
+
+const EXPENSE_COLS = [
+  { key: "date", label: "Date" },
+  { key: "receiptNumber", label: "Receipt #" },
+  { key: "businessUnitName", label: "Business Unit" },
+  { key: "vendor", label: "Vendor" },
+  { key: "category", label: "Category" },
+  { key: "description", label: "Description" },
+  { key: "amount", label: "Amount (IDR)" },
+  { key: "tax", label: "Tax (IDR)" },
+  { key: "paymentMethod", label: "Payment Method" },
+];
 
 export default function FinanceHub() {
   const [match, params] = useRoute("/finance/:tab?");
@@ -22,12 +71,60 @@ export default function FinanceHub() {
   // Shared state for filters
   const [buFilter, setBuFilter] = useState("all");
   const [periodFilter, setPeriodFilter] = useState("this_month");
-  
+  const [exporting, setExporting] = useState(false);
+
   const { data: businessUnits } = useListBusinessUnits();
+  const { toast } = useToast();
 
   const handleTabChange = (value: string) => {
     setLocation(`/finance/${value}`);
   };
+
+  async function handleExport(mode: "csv" | "sheets") {
+    setExporting(true);
+    try {
+      const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
+      const buParam = buFilter !== "all" ? `&businessUnitId=${buFilter}` : "";
+      const isIncome = tab === "income" || tab === "profit-loss" || tab === "cashflow";
+      const activeTab = tab === "expenses" ? "expenses" : "income";
+
+      // Fetch data for the active data tab
+      let rows: Record<string, unknown>[] = [];
+      let cols = INCOME_COLS;
+      let filename = "";
+
+      if (tab === "expenses") {
+        const res = await fetch(`${BASE}/api/finance/expenses?limit=5000${buParam}`);
+        const json = await res.json();
+        rows = (json.data ?? json) as Record<string, unknown>[];
+        cols = EXPENSE_COLS;
+        filename = `expenses_${new Date().toISOString().slice(0, 10)}.csv`;
+      } else {
+        const res = await fetch(`${BASE}/api/finance/income?limit=5000${buParam}`);
+        const json = await res.json();
+        rows = (json.data ?? json) as Record<string, unknown>[];
+        cols = INCOME_COLS;
+        filename = `income_${new Date().toISOString().slice(0, 10)}.csv`;
+      }
+
+      const csv = toCSV(rows, cols);
+      downloadCSV(csv, filename);
+
+      if (mode === "sheets") {
+        window.open("https://sheets.new", "_blank");
+        toast({
+          title: "File CSV didownload & Google Sheets dibuka",
+          description: "Di Google Sheets: klik File → Import → Upload, lalu pilih file CSV yang baru didownload.",
+        });
+      } else {
+        toast({ title: `Exported ${rows.length} baris ke ${filename}` });
+      }
+    } catch {
+      toast({ title: "Gagal export", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -48,7 +145,32 @@ export default function FinanceHub() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline"><Download className="w-4 h-4 mr-2" /> Export</Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" disabled={exporting}>
+                <Download className="w-4 h-4 mr-2" />
+                {exporting ? "Exporting..." : "Export"}
+                <ChevronDown className="w-3.5 h-3.5 ml-2 text-muted-foreground" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem onClick={() => handleExport("csv")} className="cursor-pointer gap-2">
+                <Download className="w-4 h-4 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">Download CSV</p>
+                  <p className="text-xs text-muted-foreground">Simpan sebagai file .csv</p>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleExport("sheets")} className="cursor-pointer gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-green-600" />
+                <div>
+                  <p className="font-medium">Export ke Google Sheets</p>
+                  <p className="text-xs text-muted-foreground">Download CSV + buka Sheets</p>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
