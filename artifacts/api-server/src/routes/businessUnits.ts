@@ -122,4 +122,20 @@ router.patch("/business-units/:id", async (req, res) => {
   }
 });
 
+// DELETE /business-units/:id
+router.delete("/business-units/:id", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [deleted] = await db
+      .delete(businessUnitsTable)
+      .where(eq(businessUnitsTable.id, id))
+      .returning();
+    if (!deleted) return res.status(404).json({ error: "Not found" });
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error(err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
