@@ -1,6 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useListCustomers, useGetCustomerStats } from "@workspace/api-client-react";
+import {
+  useListCustomers, useGetCustomerStats, useCreateCustomer, useListBusinessUnits,
+  getListCustomersQueryKey, getGetCustomerStatsQueryKey,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -20,10 +24,21 @@ import {
   SheetTitle, 
   SheetTrigger 
 } from "@/components/ui/sheet";
-import { Search, Plus, Users, ArrowUpRight, User, Phone, Mail, Building, Clock, X, ArrowLeft } from "lucide-react";
+import { Search, Plus, Users, ArrowUpRight, Phone, Mail, Building, Clock, X, ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+
+const EMPTY_FORM = {
+  fullName: "",
+  phone: "",
+  email: "",
+  businessName: "",
+  businessUnitId: "",
+  status: "Lead" as const,
+  notes: "",
+};
 
 const statusColors: Record<string, string> = {
   "Lead": "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:border-slate-800",
@@ -39,6 +54,13 @@ export default function CRM() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [saving, setSaving] = useState(false);
+
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const createCustomer = useCreateCustomer();
+  const { data: businessUnits } = useListBusinessUnits();
 
   // Read ?bu= / ?buName= from URL (deep-link from BU detail page)
   const qp = new URLSearchParams(location.includes("?") ? location.split("?")[1] : "");
@@ -55,6 +77,42 @@ export default function CRM() {
 
   function clearBuFilter() {
     setLocation("/crm");
+  }
+
+  function setF(key: keyof typeof EMPTY_FORM, value: string) {
+    setForm(prev => ({ ...prev, [key]: value }));
+  }
+
+  async function handleSave() {
+    if (!form.fullName.trim()) {
+      toast({ title: "Validasi gagal", description: "Nama lengkap wajib diisi.", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      await createCustomer.mutateAsync({
+        data: {
+          fullName: form.fullName.trim(),
+          phone: form.phone || undefined,
+          email: form.email || undefined,
+          businessName: form.businessName || undefined,
+          businessUnitId: form.businessUnitId ? parseInt(form.businessUnitId) : undefined,
+          status: form.status as any,
+          notes: form.notes || undefined,
+        },
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListCustomersQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetCustomerStatsQueryKey() }),
+      ]);
+      toast({ title: "Customer berhasil ditambahkan ✓" });
+      setForm({ ...EMPTY_FORM });
+      setIsAddOpen(false);
+    } catch {
+      toast({ title: "Gagal menyimpan customer", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -80,42 +138,95 @@ export default function CRM() {
             <SheetHeader>
               <SheetTitle>Add New Customer</SheetTitle>
             </SheetHeader>
-            <div className="grid gap-6 py-6">
+            <div className="grid gap-5 py-6">
+              {/* Full Name */}
               <div className="grid gap-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input id="fullName" placeholder="John Doe" />
+                <Label htmlFor="fullName">Full Name <span className="text-destructive">*</span></Label>
+                <Input
+                  id="fullName"
+                  placeholder="John Doe"
+                  value={form.fullName}
+                  onChange={e => setF("fullName", e.target.value)}
+                />
               </div>
+
+              {/* Phone + Email */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="phone">Phone</Label>
-                  <Input id="phone" placeholder="+62..." />
+                  <Input
+                    id="phone"
+                    placeholder="+62..."
+                    value={form.phone}
+                    onChange={e => setF("phone", e.target.value)}
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="john@example.com" />
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="john@example.com"
+                    value={form.email}
+                    onChange={e => setF("email", e.target.value)}
+                  />
                 </div>
               </div>
+
+              {/* Business Name */}
               <div className="grid gap-2">
-                <Label htmlFor="business">Business Name (Optional)</Label>
-                <Input id="business" placeholder="Acme Corp" />
+                <Label htmlFor="businessName">Business Name</Label>
+                <Input
+                  id="businessName"
+                  placeholder="Acme Corp"
+                  value={form.businessName}
+                  onChange={e => setF("businessName", e.target.value)}
+                />
               </div>
+
+              {/* Status + Business Unit */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>Status</Label>
+                  <Select value={form.status} onValueChange={v => setF("status", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Lead">Lead</SelectItem>
+                      <SelectItem value="Prospect">Prospect</SelectItem>
+                      <SelectItem value="Negotiation">Negotiation</SelectItem>
+                      <SelectItem value="Customer">Customer</SelectItem>
+                      <SelectItem value="Repeat Customer">Repeat Customer</SelectItem>
+                      <SelectItem value="VIP">VIP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>Business Unit</Label>
+                  <Select value={form.businessUnitId} onValueChange={v => setF("businessUnitId", v)}>
+                    <SelectTrigger><SelectValue placeholder="— Pilih BU —" /></SelectTrigger>
+                    <SelectContent>
+                      {(businessUnits ?? []).map(bu => (
+                        <SelectItem key={bu.id} value={String(bu.id)}>{bu.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Notes */}
               <div className="grid gap-2">
-                <Label htmlFor="status">Status</Label>
-                <Select defaultValue="Lead">
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Lead">Lead</SelectItem>
-                    <SelectItem value="Prospect">Prospect</SelectItem>
-                    <SelectItem value="Negotiation">Negotiation</SelectItem>
-                    <SelectItem value="Customer">Customer</SelectItem>
-                    <SelectItem value="Repeat Customer">Repeat Customer</SelectItem>
-                    <SelectItem value="VIP">VIP</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="notes">Notes</Label>
+                <Input
+                  id="notes"
+                  placeholder="Catatan singkat..."
+                  value={form.notes}
+                  onChange={e => setF("notes", e.target.value)}
+                />
               </div>
-              <Button onClick={() => setIsAddOpen(false)} className="w-full">Save Customer</Button>
+
+              <Button onClick={handleSave} disabled={saving} className="w-full">
+                {saving ? "Menyimpan..." : "Save Customer"}
+              </Button>
             </div>
           </SheetContent>
         </Sheet>
