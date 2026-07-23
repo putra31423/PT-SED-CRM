@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import {
   User, Bell, Shield, Moon, Sun, Monitor,
   Lock, Eye, EyeOff, Smartphone, AlertTriangle,
   Mail, MessageSquare, TrendingUp, DollarSign, Users,
+  Upload, Trash2, Camera,
 } from "lucide-react";
 
 type Section = "profile" | "appearance" | "notifications" | "security";
@@ -28,23 +29,141 @@ function ProfileSection({ onSave }: { onSave: () => void }) {
   const [title, setTitle] = useState("Chief Executive Officer");
   const [email, setEmail] = useState("ceo@solusieradigital.com");
   const [phone, setPhone] = useState("+62 811 2345 6789");
+  const [avatar, setAvatar] = useState<string | null>(() => localStorage.getItem("sed-avatar"));
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
   const initials = name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+
+  function processFile(file: File) {
+    if (!["image/jpeg", "image/png", "image/gif", "image/webp"].includes(file.type)) {
+      toast({ title: "Format tidak didukung", description: "Gunakan JPG, PNG, GIF, atau WebP.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 800 * 1024) {
+      toast({ title: "File terlalu besar", description: `Ukuran file ${(file.size / 1024).toFixed(0)} KB melebihi batas 800 KB.`, variant: "destructive" });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      setAvatar(dataUrl);
+      localStorage.setItem("sed-avatar", dataUrl);
+      toast({ title: "Avatar berhasil diubah ✓" });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+    e.target.value = "";
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
+  }
+
+  function removeAvatar() {
+    setAvatar(null);
+    localStorage.removeItem("sed-avatar");
+    toast({ title: "Avatar dihapus" });
+  }
 
   return (
     <div className="space-y-6">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp"
+        className="hidden"
+        onChange={handleFileChange}
+      />
+
       <Card className="border-none shadow-sm">
         <CardHeader>
           <CardTitle>Profile Information</CardTitle>
           <CardDescription>Update your personal details and public profile.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="flex items-center gap-6">
-            <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center text-3xl font-bold text-primary-foreground shrink-0 shadow-sm">
-              {initials}
+          {/* Avatar upload area */}
+          <div className="flex items-start gap-6">
+            {/* Avatar preview */}
+            <div className="relative group shrink-0">
+              <div
+                className={`w-24 h-24 rounded-full overflow-hidden shadow-md border-2 transition-colors ${
+                  dragOver ? "border-primary border-dashed" : "border-border"
+                }`}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+              >
+                {avatar ? (
+                  <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-primary flex items-center justify-center text-3xl font-bold text-primary-foreground">
+                    {initials}
+                  </div>
+                )}
+              </div>
+              {/* Overlay on hover */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                title="Ganti avatar"
+              >
+                <Camera className="w-6 h-6 text-white" />
+              </button>
             </div>
-            <div className="space-y-2">
-              <Button variant="outline" size="sm">Ganti Avatar</Button>
-              <p className="text-xs text-muted-foreground">JPG, GIF atau PNG. Maks 800KB</p>
+
+            {/* Upload actions */}
+            <div className="flex-1 space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="gap-2"
+                >
+                  <Upload className="w-4 h-4" />
+                  Pilih Foto
+                </Button>
+                {avatar && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={removeAvatar}
+                    className="gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Hapus
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                JPG, PNG, GIF atau WebP · Maks <strong>800 KB</strong>
+                <br />Drag &amp; drop foto langsung ke foto profil, atau klik <em>Pilih Foto</em>.
+              </p>
+              {/* Drop zone hint */}
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                className={`border-2 border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors ${
+                  dragOver
+                    ? "border-primary bg-primary/5 text-primary"
+                    : "border-border text-muted-foreground hover:border-primary/50 hover:bg-muted/30"
+                }`}
+              >
+                <Upload className="w-5 h-5 mx-auto mb-1 opacity-60" />
+                <p className="text-xs">Drag &amp; drop foto di sini</p>
+              </div>
             </div>
           </div>
 
