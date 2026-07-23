@@ -1,20 +1,120 @@
-import { useRoute } from "wouter";
-import { useGetBusinessUnit, getGetBusinessUnitQueryKey } from "@workspace/api-client-react";
+import { useState } from "react";
+import { useRoute, useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useGetBusinessUnit,
+  useUpdateBusinessUnit,
+  useListBusinessUnits,
+  getGetBusinessUnitQueryKey,
+  getListBusinessUnitsQueryKey,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { formatIDR } from "@/lib/utils";
-import { Building2, Globe, FileText, TrendingUp, CreditCard, Activity, Users, LayoutDashboard, Calendar, ArrowLeft } from "lucide-react";
+import {
+  Building2, Globe, FileText, TrendingUp, CreditCard, Activity,
+  Users, LayoutDashboard, Calendar, ArrowLeft, Pencil, BarChart3,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+
+const CATEGORIES = ["Media", "Digital", "Tourism", "Luxury", "Travel Support", "Lifestyle", "Service", "Retail"] as const;
+type Category = typeof CATEGORIES[number];
+
+interface FormState {
+  name: string;
+  category: Category | "";
+  website: string;
+  description: string;
+  notes: string;
+  isActive: boolean;
+}
 
 export default function BusinessUnitDetail() {
   const [, params] = useRoute("/business-units/:id");
+  const [, navigate] = useLocation();
   const id = params?.id ? parseInt(params.id) : 0;
 
-  const { data: unit, isLoading } = useGetBusinessUnit(id, { 
-    query: { enabled: !!id, queryKey: getGetBusinessUnitQueryKey(id) } 
+  const { data: unit, isLoading } = useGetBusinessUnit(id, {
+    query: { enabled: !!id, queryKey: getGetBusinessUnitQueryKey(id) },
   });
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [form, setForm] = useState<FormState>({
+    name: "", category: "", website: "", description: "", notes: "", isActive: true,
+  });
+  const [saving, setSaving] = useState(false);
+
+  const updateMutation = useUpdateBusinessUnit();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  function openEdit() {
+    if (!unit) return;
+    setForm({
+      name: unit.name ?? "",
+      category: (unit.category as Category) ?? "",
+      website: unit.website ?? "",
+      description: unit.description ?? "",
+      notes: unit.notes ?? "",
+      isActive: unit.isActive ?? true,
+    });
+    setEditOpen(true);
+  }
+
+  function setField<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  async function handleSave() {
+    if (!form.name || !form.category) {
+      toast({ title: "Validasi gagal", description: "Nama dan kategori wajib diisi.", variant: "destructive" });
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateMutation.mutateAsync({
+        id,
+        data: {
+          name: form.name,
+          category: form.category as Category,
+          website: form.website || undefined,
+          description: form.description || undefined,
+          notes: form.notes || undefined,
+          isActive: form.isActive,
+        },
+      });
+      toast({ title: "Business unit diperbarui ✓" });
+      queryClient.invalidateQueries({ queryKey: getGetBusinessUnitQueryKey(id) });
+      queryClient.invalidateQueries({ queryKey: getListBusinessUnitsQueryKey() });
+      setEditOpen(false);
+    } catch {
+      toast({ title: "Gagal menyimpan", description: "Terjadi kesalahan, coba lagi.", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -22,10 +122,7 @@ export default function BusinessUnitDetail() {
         <Skeleton className="h-10 w-32" />
         <Skeleton className="h-32 w-full" />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
         </div>
         <Skeleton className="h-64 w-full" />
       </div>
@@ -49,6 +146,7 @@ export default function BusinessUnitDetail() {
 
   return (
     <div className="space-y-6">
+      {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
         <Link href="/business-units" className="hover:text-foreground hover:underline transition-colors flex items-center">
           <ArrowLeft className="w-3 h-3 mr-1" /> Business Units
@@ -57,6 +155,7 @@ export default function BusinessUnitDetail() {
         <span className="text-foreground font-medium">{unit.name}</span>
       </div>
 
+      {/* Hero card */}
       <div className="bg-card rounded-xl border shadow-sm p-6 md:p-8 flex flex-col md:flex-row gap-6 md:items-center justify-between">
         <div className="flex items-center gap-6">
           <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
@@ -80,9 +179,14 @@ export default function BusinessUnitDetail() {
             </div>
             <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mt-3">
               {unit.website && (
-                <a href={unit.website.startsWith('http') ? unit.website : `https://${unit.website}`} target="_blank" rel="noreferrer" className="flex items-center hover:text-primary transition-colors">
+                <a
+                  href={unit.website.startsWith("http") ? unit.website : `https://${unit.website}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center hover:text-primary transition-colors"
+                >
                   <Globe className="w-4 h-4 mr-1" />
-                  {unit.website.replace(/^https?:\/\//, '')}
+                  {unit.website.replace(/^https?:\/\//, "")}
                 </a>
               )}
               <div className="flex items-center">
@@ -92,12 +196,24 @@ export default function BusinessUnitDetail() {
             </div>
           </div>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline">Edit Details</Button>
-          <Button>View Reports</Button>
+
+        {/* Action buttons */}
+        <div className="flex gap-3 shrink-0">
+          <Button variant="outline" onClick={openEdit} className="gap-2">
+            <Pencil className="w-4 h-4" />
+            Edit Details
+          </Button>
+          <Button
+            onClick={() => navigate(`/reports?buId=${unit.id}&buName=${encodeURIComponent(unit.name)}`)}
+            className="gap-2"
+          >
+            <BarChart3 className="w-4 h-4" />
+            View Reports
+          </Button>
         </div>
       </div>
 
+      {/* KPI cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-none shadow-sm">
           <CardHeader className="pb-2">
@@ -141,6 +257,7 @@ export default function BusinessUnitDetail() {
         </Card>
       </div>
 
+      {/* Detail cards */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 border-none shadow-sm">
           <CardHeader>
@@ -155,7 +272,6 @@ export default function BusinessUnitDetail() {
                 {unit.description || "No description provided for this business unit."}
               </p>
             </div>
-            
             <div className="grid grid-cols-2 gap-4 pt-4 border-t">
               <div>
                 <h4 className="text-sm font-semibold text-muted-foreground mb-1">Total Projects</h4>
@@ -186,6 +302,92 @@ export default function BusinessUnitDetail() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Edit Dialog ───────────────────────────────────────────────────── */}
+      <Dialog open={editOpen} onOpenChange={(v) => { if (!v) setEditOpen(false); }}>
+        <DialogContent className="sm:max-w-[540px]">
+          <DialogHeader>
+            <DialogTitle>Edit Business Unit</DialogTitle>
+            <DialogDescription>Perbarui data untuk {unit.name}.</DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-name">Nama Business Unit <span className="text-destructive">*</span></Label>
+              <Input
+                id="edit-name"
+                value={form.name}
+                onChange={(e) => setField("name", e.target.value)}
+                placeholder="contoh: Bali Discount Club"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Kategori <span className="text-destructive">*</span></Label>
+              <Select value={form.category} onValueChange={(v) => setField("category", v as Category)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih kategori" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIES.map((cat) => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-website">Website</Label>
+              <Input
+                id="edit-website"
+                value={form.website}
+                onChange={(e) => setField("website", e.target.value)}
+                placeholder="https://example.com"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-desc">Deskripsi</Label>
+              <Textarea
+                id="edit-desc"
+                value={form.description}
+                onChange={(e) => setField("description", e.target.value)}
+                placeholder="Deskripsi singkat tentang bisnis unit ini"
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-notes">Catatan Internal</Label>
+              <Textarea
+                id="edit-notes"
+                value={form.notes}
+                onChange={(e) => setField("notes", e.target.value)}
+                placeholder="Catatan internal (tidak tampil ke publik)"
+                rows={2}
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Switch
+                id="edit-active"
+                checked={form.isActive}
+                onCheckedChange={(v) => setField("isActive", v)}
+              />
+              <Label htmlFor="edit-active">Status Aktif</Label>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={saving}>
+              Batal
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Menyimpan..." : "Simpan Perubahan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
