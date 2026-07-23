@@ -4,8 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   useListIncome, useListExpenses, useGetProfitLoss, useGetCashflowDetail,
-  useListBusinessUnits, useListCustomers, useCreateIncome, useCreateExpense,
-  getListIncomeQueryKey, getListExpensesQueryKey,
+  useListBusinessUnits, useListCustomers, useCreateIncome, useCreateExpense, useCreateCustomer,
+  getListIncomeQueryKey, getListExpensesQueryKey, getListCustomersQueryKey,
   getGetDashboardSummaryQueryKey, getGetDashboardRevenueChartQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -22,7 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { formatIDR } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Calendar as CalendarIcon, Download, FileSpreadsheet, ChevronDown, TrendingUp, TrendingDown, Wallet, ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { Plus, Search, Calendar as CalendarIcon, Download, FileSpreadsheet, ChevronDown, TrendingUp, TrendingDown, Wallet, ArrowDownRight, ArrowUpRight, UserPlus } from "lucide-react";
 import { AreaChart, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line } from "recharts";
 
 const INCOME_CATEGORIES = ["Service", "Product", "Consultation", "License", "Commission", "Rental", "Other"] as const;
@@ -215,12 +215,47 @@ export default function FinanceHub() {
 function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; businessUnits: { id: number; name: string }[] }) {
   const [search, setSearch] = useState("");
   const { data: incomeList, isLoading } = useListIncome({ businessUnitId: buFilter ?? undefined });
-  const { data: customers } = useListCustomers();
+  const { data: customers } = useListCustomers({ limit: 1000 });
   const createIncome = useCreateIncome();
+  const createCustomer = useCreateCustomer();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Quick-add customer state
+  const [addCustOpen, setAddCustOpen] = useState(false);
+  const [savingCust, setSavingCust] = useState(false);
+  const [custForm, setCustForm] = useState({ fullName: "", businessName: "", phone: "", email: "", status: "Lead" });
+
+  async function handleAddCustomer() {
+    if (!custForm.fullName.trim()) {
+      toast({ title: "Nama wajib diisi", variant: "destructive" });
+      return;
+    }
+    setSavingCust(true);
+    try {
+      const newCust = await createCustomer.mutateAsync({
+        data: {
+          fullName: custForm.fullName,
+          businessName: custForm.businessName || undefined,
+          phone: custForm.phone || undefined,
+          email: custForm.email || undefined,
+          status: custForm.status as any,
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: getListCustomersQueryKey() });
+      // Auto-select the just-created customer
+      setF("customerId", String(newCust.id));
+      toast({ title: `Customer "${newCust.name}" ditambahkan ✓` });
+      setCustForm({ fullName: "", businessName: "", phone: "", email: "", status: "Lead" });
+      setAddCustOpen(false);
+    } catch {
+      toast({ title: "Gagal menambahkan customer", variant: "destructive" });
+    } finally {
+      setSavingCust(false);
+    }
+  }
 
   const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
@@ -358,19 +393,127 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Customer with quick-add */}
                 <div className="space-y-1.5">
-                  <Label>Customer</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Customer</Label>
+                    <button
+                      type="button"
+                      onClick={() => setAddCustOpen(true)}
+                      className="flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+                    >
+                      <UserPlus className="w-3 h-3" />
+                      Tambah Customer Baru
+                    </button>
+                  </div>
                   <Select value={form.customerId} onValueChange={(v) => setF("customerId", v)}>
-                    <SelectTrigger><SelectValue placeholder="Pilih Customer (opsional)" /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder={
+                        (customers?.data?.length ?? 0) === 0
+                          ? "Belum ada customer — tambah dulu"
+                          : "Pilih Customer (opsional)"
+                      } />
+                    </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">— Tidak ada —</SelectItem>
-                      {(customers?.data ?? []).map(c => (
-                        <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
-                      ))}
+                      {(customers?.data?.length ?? 0) === 0 ? (
+                        <div className="px-3 py-6 text-center text-sm text-muted-foreground space-y-2">
+                          <UserPlus className="w-6 h-6 mx-auto opacity-40" />
+                          <p>Belum ada customer.</p>
+                          <button
+                            type="button"
+                            onClick={() => { setAddCustOpen(true); }}
+                            className="text-primary hover:underline font-medium text-xs"
+                          >
+                            + Tambah Customer Baru
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <SelectItem value="none">— Tidak ada —</SelectItem>
+                          {(customers?.data ?? []).map(c => (
+                            <SelectItem key={c.id} value={c.id.toString()}>
+                              {c.name}
+                              {c.businessName ? <span className="text-muted-foreground ml-1 text-xs">· {c.businessName}</span> : null}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
+              {/* Quick-add Customer Dialog */}
+              {addCustOpen && (
+                <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold flex items-center gap-2">
+                      <UserPlus className="w-4 h-4 text-primary" />
+                      Tambah Customer Baru
+                    </p>
+                    <button type="button" onClick={() => setAddCustOpen(false)} className="text-muted-foreground hover:text-foreground text-lg leading-none">×</button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2 space-y-1">
+                      <Label className="text-xs">Nama Lengkap <span className="text-destructive">*</span></Label>
+                      <Input
+                        placeholder="John Doe"
+                        value={custForm.fullName}
+                        onChange={(e) => setCustForm(p => ({ ...p, fullName: e.target.value }))}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Bisnis / Perusahaan</Label>
+                      <Input
+                        placeholder="PT Contoh"
+                        value={custForm.businessName}
+                        onChange={(e) => setCustForm(p => ({ ...p, businessName: e.target.value }))}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">No. HP</Label>
+                      <Input
+                        placeholder="+62 812..."
+                        value={custForm.phone}
+                        onChange={(e) => setCustForm(p => ({ ...p, phone: e.target.value }))}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Email</Label>
+                      <Input
+                        type="email"
+                        placeholder="email@example.com"
+                        value={custForm.email}
+                        onChange={(e) => setCustForm(p => ({ ...p, email: e.target.value }))}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Status</Label>
+                      <Select value={custForm.status} onValueChange={(v) => setCustForm(p => ({ ...p, status: v }))}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {["Lead", "Prospect", "Negotiation", "Customer", "Repeat Customer", "VIP"].map(s => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => setAddCustOpen(false)} disabled={savingCust}>
+                      Batal
+                    </Button>
+                    <Button size="sm" className="flex-1" onClick={handleAddCustomer} disabled={savingCust}>
+                      {savingCust ? "Menyimpan..." : "Simpan & Pilih"}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <Separator />
 
