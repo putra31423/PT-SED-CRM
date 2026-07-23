@@ -5,10 +5,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   useListIncome, useListExpenses, useGetProfitLoss, useGetCashflowDetail,
   useListBusinessUnits, useListCustomers, useCreateIncome, useCreateExpense, useCreateCustomer,
+  useUpdateIncome, useUpdateExpense,
   getListIncomeQueryKey, getListExpensesQueryKey, getListCustomersQueryKey,
   getGetDashboardSummaryQueryKey, getGetDashboardRevenueChartQueryKey,
   getGetDashboardCashflowQueryKey, getGetTopBusinessUnitsQueryKey,
 } from "@workspace/api-client-react";
+import type { Income, Expense } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -265,11 +267,72 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
   const { data: incomeList, isLoading } = useListIncome({ businessUnitId: buFilter ?? undefined, limit: 10000 });
   const { data: customers } = useListCustomers({ limit: 1000 });
   const createIncome = useCreateIncome();
+  const updateIncome = useUpdateIncome();
   const createCustomer = useCreateCustomer();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Edit state
+  const [editItem, setEditItem] = useState<Income | null>(null);
+  const [editForm, setEditForm] = useState<Record<string, string>>({});
+  const [editSaving, setEditSaving] = useState(false);
+
+  function openIncomeEdit(item: Income) {
+    setEditItem(item);
+    setEditForm({
+      date: item.date ?? "",
+      amount: String(item.amount ?? ""),
+      invoiceNumber: item.invoiceNumber ?? "",
+      category: item.category ?? "",
+      paymentMethod: item.paymentMethod ?? "",
+      status: item.status ?? "Received",
+      tax: String(item.tax ?? ""),
+      description: item.description ?? "",
+      businessUnitId: item.businessUnitId ? String(item.businessUnitId) : "",
+      customerId: item.customerId ? String(item.customerId) : "",
+    });
+  }
+
+  function setEF(key: string, value: string) {
+    setEditForm(prev => ({ ...prev, [key]: value }));
+  }
+
+  async function handleEditSave() {
+    if (!editItem) return;
+    setEditSaving(true);
+    try {
+      await updateIncome.mutateAsync({
+        id: editItem.id,
+        data: {
+          date: editForm.date || undefined,
+          amount: editForm.amount ? parseFloat(editForm.amount) : undefined,
+          invoiceNumber: editForm.invoiceNumber || undefined,
+          category: editForm.category || undefined,
+          paymentMethod: editForm.paymentMethod || undefined,
+          status: (editForm.status as any) || undefined,
+          tax: editForm.tax ? parseFloat(editForm.tax) : undefined,
+          description: editForm.description || undefined,
+          businessUnitId: editForm.businessUnitId ? parseInt(editForm.businessUnitId) : undefined,
+          customerId: editForm.customerId ? parseInt(editForm.customerId) : undefined,
+        },
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListIncomeQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardRevenueChartQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardCashflowQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetTopBusinessUnitsQueryKey() }),
+      ]);
+      toast({ title: "Income berhasil diperbarui ✓" });
+      setEditItem(null);
+    } catch {
+      toast({ title: "Gagal menyimpan", variant: "destructive" });
+    } finally {
+      setEditSaving(false);
+    }
+  }
 
   // Quick-add customer state
   const [addCustOpen, setAddCustOpen] = useState(false);
@@ -394,6 +457,7 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
     });
 
   return (
+    <>
     <Card className="border-none shadow-sm">
       <div className="p-4 border-b bg-card flex flex-col sm:flex-row gap-3 justify-between items-center rounded-t-xl">
         {/* Search + Sort controls */}
@@ -705,7 +769,11 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
                 </TableCell>
               </TableRow>
             ) : filtered.map((item) => (
-              <TableRow key={item.id} className="hover:bg-muted/30">
+              <TableRow
+                key={item.id}
+                className="hover:bg-muted/30 cursor-pointer"
+                onClick={() => openIncomeEdit(item as Income)}
+              >
                 <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
                   {new Date(item.date).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
                 </TableCell>
@@ -731,6 +799,101 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
         </Table>
       </div>
     </Card>
+
+    {/* ── Edit Income Sheet ─────────────────────────────────────────────── */}
+    <Sheet open={!!editItem} onOpenChange={(o) => { if (!o) setEditItem(null); }}>
+      <SheetContent className="sm:max-w-[480px] flex flex-col overflow-hidden p-0">
+        <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+          <SheetTitle>Edit Income</SheetTitle>
+          <SheetDescription>Perbarui detail transaksi income.</SheetDescription>
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Jumlah (IDR)</Label>
+              <Input type="number" value={editForm.amount ?? ""} onChange={e => setEF("amount", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tanggal</Label>
+              <Input type="date" value={editForm.date ?? ""} onChange={e => setEF("date", e.target.value)} />
+            </div>
+          </div>
+          <Separator />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>No. Invoice</Label>
+              <Input value={editForm.invoiceNumber ?? ""} onChange={e => setEF("invoiceNumber", e.target.value)} placeholder="INV-2026-001" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Status</Label>
+              <Select value={editForm.status ?? ""} onValueChange={v => setEF("status", v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Received">Received</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Business Unit</Label>
+            <Select value={editForm.businessUnitId ?? ""} onValueChange={v => setEF("businessUnitId", v)}>
+              <SelectTrigger><SelectValue placeholder="Pilih Business Unit" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— Tidak ada —</SelectItem>
+                {businessUnits.map(bu => <SelectItem key={bu.id} value={String(bu.id)}>{bu.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Customer</Label>
+            <Select value={editForm.customerId ?? ""} onValueChange={v => setEF("customerId", v)}>
+              <SelectTrigger><SelectValue placeholder="Pilih customer" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— Tidak ada —</SelectItem>
+                {(customers?.data ?? []).map(c => <SelectItem key={c.id} value={String(c.id)}>{c.fullName}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Kategori</Label>
+              <Select value={editForm.category ?? ""} onValueChange={v => setEF("category", v)}>
+                <SelectTrigger><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
+                <SelectContent>
+                  {INCOME_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Metode Pembayaran</Label>
+              <Select value={editForm.paymentMethod ?? ""} onValueChange={v => setEF("paymentMethod", v)}>
+                <SelectTrigger><SelectValue placeholder="Pilih metode" /></SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Pajak / Tax (IDR)</Label>
+            <Input type="number" value={editForm.tax ?? ""} onChange={e => setEF("tax", e.target.value)} placeholder="0" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Deskripsi</Label>
+            <Textarea value={editForm.description ?? ""} onChange={e => setEF("description", e.target.value)} rows={2} />
+          </div>
+        </div>
+        <SheetFooter className="px-6 py-4 border-t shrink-0 flex gap-2">
+          <Button variant="outline" className="flex-1" onClick={() => setEditItem(null)} disabled={editSaving}>Batal</Button>
+          <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={handleEditSave} disabled={editSaving}>
+            {editSaving ? "Menyimpan..." : "Simpan Perubahan"}
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+    </>
   );
 }
 
@@ -740,10 +903,69 @@ function ExpenseTab({ buFilter, businessUnits }: { buFilter: number | null; busi
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const { data: expenseList, isLoading } = useListExpenses({ businessUnitId: buFilter ?? undefined, limit: 10000 });
   const createExpense = useCreateExpense();
+  const updateExpense = useUpdateExpense();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // Edit state
+  const [editItem, setEditItem] = useState<Expense | null>(null);
+  const [editForm, setEditForm] = useState<Record<string, string>>({});
+  const [editSaving, setEditSaving] = useState(false);
+
+  function openExpenseEdit(item: Expense) {
+    setEditItem(item);
+    setEditForm({
+      date: item.date ?? "",
+      amount: String(item.amount ?? ""),
+      vendor: item.vendor ?? "",
+      receiptNumber: item.receiptNumber ?? "",
+      category: item.category ?? "",
+      paymentMethod: item.paymentMethod ?? "",
+      tax: String(item.tax ?? ""),
+      description: item.description ?? "",
+      businessUnitId: item.businessUnitId ? String(item.businessUnitId) : "",
+    });
+  }
+
+  function setEF(key: string, value: string) {
+    setEditForm(prev => ({ ...prev, [key]: value }));
+  }
+
+  async function handleEditSave() {
+    if (!editItem) return;
+    setEditSaving(true);
+    try {
+      await updateExpense.mutateAsync({
+        id: editItem.id,
+        data: {
+          date: editForm.date || undefined,
+          amount: editForm.amount ? parseFloat(editForm.amount) : undefined,
+          vendor: editForm.vendor || undefined,
+          receiptNumber: editForm.receiptNumber || undefined,
+          category: editForm.category || undefined,
+          paymentMethod: editForm.paymentMethod || undefined,
+          tax: editForm.tax ? parseFloat(editForm.tax) : undefined,
+          description: editForm.description || undefined,
+          businessUnitId: editForm.businessUnitId ? parseInt(editForm.businessUnitId) : undefined,
+        },
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardRevenueChartQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardCashflowQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetTopBusinessUnitsQueryKey() }),
+      ]);
+      toast({ title: "Expense berhasil diperbarui ✓" });
+      setEditItem(null);
+    } catch {
+      toast({ title: "Gagal menyimpan", variant: "destructive" });
+    } finally {
+      setEditSaving(false);
+    }
+  }
 
   const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({
@@ -830,6 +1052,7 @@ function ExpenseTab({ buFilter, businessUnits }: { buFilter: number | null; busi
     });
 
   return (
+    <>
     <Card className="border-none shadow-sm">
       <div className="p-4 border-b bg-card flex flex-col sm:flex-row gap-3 justify-between items-center rounded-t-xl">
         {/* Search + Sort controls */}
@@ -1010,7 +1233,11 @@ function ExpenseTab({ buFilter, businessUnits }: { buFilter: number | null; busi
                 </TableCell>
               </TableRow>
             ) : filtered.map((item) => (
-              <TableRow key={item.id} className="hover:bg-muted/30">
+              <TableRow
+                key={item.id}
+                className="hover:bg-muted/30 cursor-pointer"
+                onClick={() => openExpenseEdit(item as Expense)}
+              >
                 <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
                   {new Date(item.date).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
                 </TableCell>
@@ -1027,6 +1254,85 @@ function ExpenseTab({ buFilter, businessUnits }: { buFilter: number | null; busi
         </Table>
       </div>
     </Card>
+
+    {/* ── Edit Expense Sheet ────────────────────────────────────────────── */}
+    <Sheet open={!!editItem} onOpenChange={(o) => { if (!o) setEditItem(null); }}>
+      <SheetContent className="sm:max-w-[480px] flex flex-col overflow-hidden p-0">
+        <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+          <SheetTitle>Edit Expense</SheetTitle>
+          <SheetDescription>Perbarui detail transaksi pengeluaran.</SheetDescription>
+        </SheetHeader>
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Jumlah (IDR)</Label>
+              <Input type="number" value={editForm.amount ?? ""} onChange={e => setEF("amount", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Tanggal</Label>
+              <Input type="date" value={editForm.date ?? ""} onChange={e => setEF("date", e.target.value)} />
+            </div>
+          </div>
+          <Separator />
+          <div className="space-y-1.5">
+            <Label>Business Unit</Label>
+            <Select value={editForm.businessUnitId ?? ""} onValueChange={v => setEF("businessUnitId", v)}>
+              <SelectTrigger><SelectValue placeholder="Pilih Business Unit" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— Tidak ada —</SelectItem>
+                {businessUnits.map(bu => <SelectItem key={bu.id} value={String(bu.id)}>{bu.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <Separator />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Vendor / Supplier</Label>
+              <Input value={editForm.vendor ?? ""} onChange={e => setEF("vendor", e.target.value)} placeholder="Nama vendor..." />
+            </div>
+            <div className="space-y-1.5">
+              <Label>No. Receipt</Label>
+              <Input value={editForm.receiptNumber ?? ""} onChange={e => setEF("receiptNumber", e.target.value)} placeholder="RCP-2026-001" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Kategori</Label>
+              <Select value={editForm.category ?? ""} onValueChange={v => setEF("category", v)}>
+                <SelectTrigger><SelectValue placeholder="Pilih kategori" /></SelectTrigger>
+                <SelectContent>
+                  {EXPENSE_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Metode Pembayaran</Label>
+              <Select value={editForm.paymentMethod ?? ""} onValueChange={v => setEF("paymentMethod", v)}>
+                <SelectTrigger><SelectValue placeholder="Pilih metode" /></SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Pajak / Tax (IDR)</Label>
+            <Input type="number" value={editForm.tax ?? ""} onChange={e => setEF("tax", e.target.value)} placeholder="0" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Deskripsi</Label>
+            <Textarea value={editForm.description ?? ""} onChange={e => setEF("description", e.target.value)} rows={2} />
+          </div>
+        </div>
+        <SheetFooter className="px-6 py-4 border-t shrink-0 flex gap-2">
+          <Button variant="outline" className="flex-1" onClick={() => setEditItem(null)} disabled={editSaving}>Batal</Button>
+          <Button className="flex-1 bg-red-600 hover:bg-red-700" onClick={handleEditSave} disabled={editSaving}>
+            {editSaving ? "Menyimpan..." : "Simpan Perubahan"}
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+    </>
   );
 }
 
