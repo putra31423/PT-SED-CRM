@@ -7,6 +7,7 @@ import {
   useListBusinessUnits, useListCustomers, useCreateIncome, useCreateExpense, useCreateCustomer,
   getListIncomeQueryKey, getListExpensesQueryKey, getListCustomersQueryKey,
   getGetDashboardSummaryQueryKey, getGetDashboardRevenueChartQueryKey,
+  getGetDashboardCashflowQueryKey, getGetTopBusinessUnitsQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -358,10 +359,14 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
           description: form.description || undefined,
         },
       });
-      // Invalidate income list + dashboard caches for instant sync
-      queryClient.invalidateQueries({ queryKey: getListIncomeQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetDashboardRevenueChartQueryKey() });
+      // Invalidate income list + all dashboard caches for instant sync
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListIncomeQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardRevenueChartQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardCashflowQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetTopBusinessUnitsQueryKey() }),
+      ]);
       toast({ title: "Income berhasil dicatat ✓" });
       resetForm();
       setIsAddOpen(false);
@@ -791,10 +796,14 @@ function ExpenseTab({ buFilter, businessUnits }: { buFilter: number | null; busi
           description: form.description || undefined,
         },
       });
-      // Invalidate expense list + dashboard caches for instant sync
-      queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetDashboardRevenueChartQueryKey() });
+      // Invalidate expense list + all dashboard caches for instant sync
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardRevenueChartQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardCashflowQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetTopBusinessUnitsQueryKey() }),
+      ]);
       toast({ title: "Expense berhasil dicatat ✓" });
       resetForm();
       setIsAddOpen(false);
