@@ -31,9 +31,7 @@ export default function Login() {
         <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-sidebar to-sidebar z-0" />
         
         <div className="relative z-10 flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-xl">
-            S
-          </div>
+          <img src="/logo-sed.png" alt="SED Logo" className="h-12 w-auto" />
           <span className="font-bold text-sidebar-foreground text-2xl tracking-tight">
             SED Command Center
           </span>
