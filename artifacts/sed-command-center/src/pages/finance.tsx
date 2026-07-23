@@ -261,7 +261,7 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "amount" | "status">("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const { data: incomeList, isLoading } = useListIncome({ businessUnitId: buFilter ?? undefined });
+  const { data: incomeList, isLoading } = useListIncome({ businessUnitId: buFilter ?? undefined, limit: 10000 });
   const { data: customers } = useListCustomers({ limit: 1000 });
   const createIncome = useCreateIncome();
   const createCustomer = useCreateCustomer();
@@ -733,7 +733,7 @@ function ExpenseTab({ buFilter, businessUnits }: { buFilter: number | null; busi
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "amount">("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const { data: expenseList, isLoading } = useListExpenses({ businessUnitId: buFilter ?? undefined });
+  const { data: expenseList, isLoading } = useListExpenses({ businessUnitId: buFilter ?? undefined, limit: 10000 });
   const createExpense = useCreateExpense();
   const queryClient = useQueryClient();
   const { toast } = useToast();

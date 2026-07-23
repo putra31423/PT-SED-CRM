@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { incomeTable, expensesTable, businessUnitsTable, customersTable } from "@workspace/db";
-import { eq, sql, and, gte, lte } from "drizzle-orm";
+import { eq, sql, and, gte, lte, desc } from "drizzle-orm";
 
 const router = Router();
 
@@ -42,7 +42,7 @@ router.get("/finance/income", async (req, res) => {
       .from(incomeTable)
       .leftJoin(businessUnitsTable, eq(incomeTable.businessUnitId, businessUnitsTable.id))
       .leftJoin(customersTable, eq(incomeTable.customerId, customersTable.id))
-      .where(where).orderBy(incomeTable.date).limit(limitNum).offset(offset);
+      .where(where).orderBy(desc(incomeTable.date)).limit(limitNum).offset(offset);
 
     res.json({
       data: rows.map((r) => ({ ...r.income, amount: Number(r.income.amount), tax: Number(r.income.tax), businessUnitName: r.businessUnitName ?? null, customerName: r.customerName ?? null })),
@@ -117,7 +117,7 @@ router.get("/finance/expenses", async (req, res) => {
     const rows = await db.select({ expense: expensesTable, businessUnitName: businessUnitsTable.name })
       .from(expensesTable)
       .leftJoin(businessUnitsTable, eq(expensesTable.businessUnitId, businessUnitsTable.id))
-      .where(where).orderBy(expensesTable.date).limit(limitNum).offset(offset);
+      .where(where).orderBy(desc(expensesTable.date)).limit(limitNum).offset(offset);
 
     res.json({
       data: rows.map((r) => ({ ...r.expense, amount: Number(r.expense.amount), tax: Number(r.expense.tax), businessUnitName: r.businessUnitName ?? null })),
