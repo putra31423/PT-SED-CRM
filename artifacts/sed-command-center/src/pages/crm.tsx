@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useListCustomers, useGetCustomerStats } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,7 @@ import {
   SheetTitle, 
   SheetTrigger 
 } from "@/components/ui/sheet";
-import { Search, Plus, Users, ArrowUpRight, User, Phone, Mail, Building, Clock } from "lucide-react";
+import { Search, Plus, Users, ArrowUpRight, User, Phone, Mail, Building, Clock, X, ArrowLeft } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,23 +35,38 @@ const statusColors: Record<string, string> = {
 };
 
 export default function CRM() {
+  const [location, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [isAddOpen, setIsAddOpen] = useState(false);
 
+  // Read ?bu= / ?buName= from URL (deep-link from BU detail page)
+  const qp = new URLSearchParams(location.includes("?") ? location.split("?")[1] : "");
+  const buFromUrl = qp.get("bu") ?? "";
+  const buNameFromUrl = decodeURIComponent(qp.get("buName") ?? "");
+
   const { data: customersData, isLoading } = useListCustomers({ 
     search: search.length > 2 ? search : null,
-    status: statusFilter !== "all" ? statusFilter as any : null
+    status: statusFilter !== "all" ? statusFilter as any : null,
+    businessUnitId: buFromUrl ? parseInt(buFromUrl) : undefined,
   });
   
   const { data: stats } = useGetCustomerStats();
+
+  function clearBuFilter() {
+    setLocation("/crm");
+  }
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-foreground">Customer Database</h2>
-          <p className="text-muted-foreground">Manage leads, prospects, and VIP clients across all units.</p>
+          <p className="text-muted-foreground">
+            {buNameFromUrl
+              ? `Customer untuk ${buNameFromUrl}`
+              : "Manage leads, prospects, and VIP clients across all units."}
+          </p>
         </div>
         
         <Sheet open={isAddOpen} onOpenChange={setIsAddOpen}>

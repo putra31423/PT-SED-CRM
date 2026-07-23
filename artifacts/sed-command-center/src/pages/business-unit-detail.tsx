@@ -32,7 +32,7 @@ import {
 import { formatIDR } from "@/lib/utils";
 import {
   Building2, Globe, FileText, TrendingUp, CreditCard, Activity,
-  Users, LayoutDashboard, Calendar, ArrowLeft, Pencil, BarChart3,
+  Users, LayoutDashboard, Calendar, ArrowLeft, Pencil, BarChart3, ChevronRight,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
@@ -213,48 +213,79 @@ export default function BusinessUnitDetail() {
         </div>
       </div>
 
-      {/* KPI cards */}
+      {/* KPI cards — clickable, navigate to filtered transaction views */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="border-none shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex justify-between">
-              Total Revenue <TrendingUp className="h-4 w-4 text-primary" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{formatIDR(unit.totalRevenue || 0)}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-none shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex justify-between">
-              Total Expenses <CreditCard className="h-4 w-4 text-red-500" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{formatIDR(unit.totalExpenses || 0)}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-none shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex justify-between">
-              Net Profit <Activity className="h-4 w-4 text-green-500" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{formatIDR(unit.netProfit || 0)}</div>
-          </CardContent>
-        </Card>
-        <Card className="border-none shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex justify-between">
-              Total Customers <Users className="h-4 w-4 text-blue-500" />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{unit.totalCustomers || 0}</div>
-          </CardContent>
-        </Card>
+        <Link href={`/finance/income?bu=${unit.id}&buName=${encodeURIComponent(unit.name)}`} className="block group">
+          <Card className="border-none shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex justify-between items-center">
+                Total Revenue
+                <div className="flex items-center gap-1">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">{formatIDR(unit.totalRevenue || 0)}</div>
+              <p className="text-xs text-muted-foreground mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Lihat transaksi income →</p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href={`/finance/expenses?bu=${unit.id}&buName=${encodeURIComponent(unit.name)}`} className="block group">
+          <Card className="border-none shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex justify-between items-center">
+                Total Expenses
+                <div className="flex items-center gap-1">
+                  <CreditCard className="h-4 w-4 text-red-500" />
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">{formatIDR(unit.totalExpenses || 0)}</div>
+              <p className="text-xs text-muted-foreground mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Lihat transaksi expense →</p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href={`/reports?buId=${unit.id}&buName=${encodeURIComponent(unit.name)}`} className="block group">
+          <Card className="border-none shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex justify-between items-center">
+                Net Profit
+                <div className="flex items-center gap-1">
+                  <Activity className="h-4 w-4 text-green-500" />
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">{formatIDR(unit.netProfit || 0)}</div>
+              <p className="text-xs text-muted-foreground mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Lihat laporan P&L →</p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href={`/crm?bu=${unit.id}&buName=${encodeURIComponent(unit.name)}`} className="block group">
+          <Card className="border-none shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex justify-between items-center">
+                Total Customers
+                <div className="flex items-center gap-1">
+                  <Users className="h-4 w-4 text-blue-500" />
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-foreground">{unit.totalCustomers || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Lihat daftar customer →</p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Detail cards */}

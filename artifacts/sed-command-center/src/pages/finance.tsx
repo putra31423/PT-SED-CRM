@@ -22,7 +22,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { formatIDR } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Calendar as CalendarIcon, Download, FileSpreadsheet, ChevronDown, TrendingUp, TrendingDown, Wallet, ArrowDownRight, ArrowUpRight, UserPlus } from "lucide-react";
+import { Plus, Search, Calendar as CalendarIcon, Download, FileSpreadsheet, ChevronDown, TrendingUp, TrendingDown, Wallet, ArrowDownRight, ArrowUpRight, UserPlus, Building2, X, ArrowLeft } from "lucide-react";
+import { Link } from "wouter";
 import { AreaChart, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line } from "recharts";
 
 const INCOME_CATEGORIES = ["Service", "Product", "Consultation", "License", "Commission", "Rental", "Other"] as const;
@@ -78,11 +79,16 @@ const EXPENSE_COLS = [
 
 export default function FinanceHub() {
   const [match, params] = useRoute("/finance/:tab?");
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const tab = params?.tab || "income";
 
+  // Read ?bu= and ?buName= query params for deep-link from BU detail page
+  const qp = new URLSearchParams(location.includes("?") ? location.split("?")[1] : "");
+  const buFromUrl = qp.get("bu") ?? "";
+  const buNameFromUrl = qp.get("buName") ?? "";
+
   // Shared state for filters
-  const [buFilter, setBuFilter] = useState("all");
+  const [buFilter, setBuFilter] = useState(buFromUrl || "all");
   const [periodFilter, setPeriodFilter] = useState("this_month");
   const [exporting, setExporting] = useState(false);
 
@@ -139,12 +145,23 @@ export default function FinanceHub() {
     }
   }
 
+  function clearBuFilter() {
+    setBuFilter("all");
+    // Strip query params from current path
+    const path = location.split("?")[0];
+    setLocation(path);
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-foreground">Finance Hub</h2>
-          <p className="text-muted-foreground">Manage cashflow, track transactions, and analyze profitability.</p>
+          <p className="text-muted-foreground">
+            {buFromUrl && buNameFromUrl
+              ? `Transaksi untuk ${buNameFromUrl}`
+              : "Manage cashflow, track transactions, and analyze profitability."}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <Select value={buFilter} onValueChange={setBuFilter}>
@@ -186,6 +203,32 @@ export default function FinanceHub() {
           </DropdownMenu>
         </div>
       </div>
+
+      {/* BU filter banner — shown when deep-linked from a BU detail card */}
+      {buFromUrl && buNameFromUrl && (
+        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+          <Building2 className="w-4 h-4 text-primary shrink-0" />
+          <span className="text-sm font-medium text-foreground flex-1">
+            Menampilkan transaksi untuk:{" "}
+            <span className="font-semibold text-primary">{buNameFromUrl}</span>
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearBuFilter}
+            className="gap-1.5 text-muted-foreground hover:text-foreground h-7 px-2"
+          >
+            <X className="w-3.5 h-3.5" />
+            Tampilkan semua
+          </Button>
+          <Button variant="outline" size="sm" className="h-7 gap-1.5 shrink-0" asChild>
+            <Link href={`/business-units/${buFromUrl}`}>
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Kembali
+            </Link>
+          </Button>
+        </div>
+      )}
 
       <Tabs value={tab} onValueChange={handleTabChange} className="w-full space-y-6">
         <TabsList className="bg-card border w-full justify-start h-auto p-1 overflow-x-auto rounded-lg">
