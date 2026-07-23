@@ -16,7 +16,6 @@ export interface DashboardSummary {
   yearlyRevenue: number;
   totalExpenses: number;
   netProfit: number;
-  cashflow: number;
   totalCustomers: number;
   totalTransactions: number;
   profitMargin: number;

@@ -804,7 +804,7 @@ components:
     # ── DASHBOARD ─────────────────────────────────────────────────────────────
     DashboardSummary:
       type: object
-      required: [totalRevenue, todayRevenue, monthlyRevenue, yearlyRevenue, totalExpenses, netProfit, cashflow, totalCustomers, totalTransactions, profitMargin, revenueGrowth, expenseGrowth]
+      required: [totalRevenue, todayRevenue, monthlyRevenue, yearlyRevenue, totalExpenses, netProfit, totalCustomers, totalTransactions, profitMargin, revenueGrowth, expenseGrowth]
       properties:
         totalRevenue: { type: number }
         todayRevenue: { type: number }
@@ -812,7 +812,6 @@ components:
         yearlyRevenue: { type: number }
         totalExpenses: { type: number }
         netProfit: { type: number }
-        cashflow: { type: number }
         totalCustomers: { type: integer }
         totalTransactions: { type: integer }
         profitMargin: { type: number }

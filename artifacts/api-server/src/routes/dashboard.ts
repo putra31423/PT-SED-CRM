@@ -60,17 +60,19 @@ router.get("/dashboard/summary", async (req, res) => {
     const revenue = Number(incAgg?.total ?? 0);
     const expenses = Number(expAgg?.total ?? 0);
 
+    const netProfit = revenue - expenses;
+    const profitMargin = revenue > 0 ? Math.round((netProfit / revenue) * 10000) / 100 : 0;
+
     res.json({
       totalRevenue: revenue,
       todayRevenue: Number(todayInc?.total ?? 0),
       monthlyRevenue: revenue,
       yearlyRevenue: Number(yearInc?.total ?? 0),
       totalExpenses: expenses,
-      netProfit: revenue - expenses,
-      cashflow: revenue - expenses,
+      netProfit,
       totalCustomers: Number(custAgg?.count ?? 0),
       totalTransactions: Number(incAgg?.count ?? 0),
-      profitMargin: revenue > 0 ? ((revenue - expenses) / revenue) * 100 : 0,
+      profitMargin,
       revenueGrowth: 18.4,
       expenseGrowth: 7.2,
     });
