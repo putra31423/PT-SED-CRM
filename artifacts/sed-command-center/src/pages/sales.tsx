@@ -59,6 +59,37 @@ export default function SalesPipeline() {
       (old ?? []).map(d => d.id === draggedDealId ? { ...d, stage } : d)
     );
 
+    // Optimistic update — recalculate summary banner immediately
+    queryClient.setQueryData(summaryKey, (old: typeof summary) => {
+      if (!old) return old;
+      const dealValue = deal.value;
+      const fromStage = deal.stage;
+      const toStage = stage;
+      const wonDelta =
+        toStage === "Won" ? dealValue : fromStage === "Won" ? -dealValue : 0;
+      const wonDealsDelta =
+        toStage === "Won" ? 1 : fromStage === "Won" ? -1 : 0;
+
+      const updatedByStage = old.byStage.map(s => {
+        if (s.stage === fromStage)
+          return { ...s, count: s.count - 1, value: s.value - dealValue };
+        if (s.stage === toStage)
+          return { ...s, count: s.count + 1, value: s.value + dealValue };
+        return s;
+      });
+      // If toStage not yet in byStage (e.g. first deal in that stage)
+      if (!old.byStage.find(s => s.stage === toStage)) {
+        updatedByStage.push({ stage: toStage, count: 1, value: dealValue });
+      }
+
+      return {
+        ...old,
+        wonValue: Math.max(0, (old.wonValue ?? 0) + wonDelta),
+        wonDeals: Math.max(0, (old.wonDeals ?? 0) + wonDealsDelta),
+        byStage: updatedByStage,
+      };
+    });
+
     updateDeal.mutate(
       { id: draggedDealId, data: { stage } },
       {
