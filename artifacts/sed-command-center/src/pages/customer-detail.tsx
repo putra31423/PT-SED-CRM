@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useRoute } from "wouter";
+import { useRoute, useLocation } from "wouter";
 import {
-  useGetCustomer, useUpdateCustomer, useListBusinessUnits,
-  getGetCustomerQueryKey, getListCustomersQueryKey,
+  useGetCustomer, useUpdateCustomer, useDeleteCustomer, useListBusinessUnits,
+  getGetCustomerQueryKey, getListCustomersQueryKey, getGetCustomerStatsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle,
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter,
 } from "@/components/ui/sheet";
 import { Link } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,7 +25,7 @@ import {
   ArrowLeft, Mail, Phone, MapPin, Building, Globe,
   Calendar, Briefcase, FileText, CheckCircle2, MessageSquare,
   Facebook, Instagram, Tag, Clock, Plus, User, Pencil,
-  Star, Crown, Users, TrendingUp, Handshake, Search, Repeat2,
+  Star, Crown, Users, TrendingUp, Handshake, Search, Repeat2, Trash2,
 } from "lucide-react";
 
 const STATUS_OPTIONS = [
@@ -53,15 +53,18 @@ export default function CustomerDetail() {
   const id = params?.id ? parseInt(params.id) : 0;
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const { data: customer, isLoading } = useGetCustomer(id, {
     query: { enabled: !!id, queryKey: getGetCustomerQueryKey(id) },
   });
   const { data: businessUnits } = useListBusinessUnits();
   const updateCustomer = useUpdateCustomer();
+  const deleteCustomer = useDeleteCustomer();
 
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [form, setForm] = useState<{
     fullName: string; businessName: string; phone: string; whatsapp: string;
     email: string; nationality: string; country: string; address: string;
@@ -142,6 +145,23 @@ export default function CustomerDetail() {
     } catch {
       toast({ title: "Gagal menyimpan profil", variant: "destructive" });
     } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!id) return;
+    setSaving(true);
+    try {
+      await deleteCustomer.mutateAsync({ id });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListCustomersQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetCustomerStatsQueryKey() }),
+      ]);
+      toast({ title: `Customer ${customer?.fullName} berhasil dihapus` });
+      setLocation("/crm");
+    } catch {
+      toast({ title: "Gagal menghapus customer", variant: "destructive" });
       setSaving(false);
     }
   }
@@ -569,14 +589,33 @@ export default function CustomerDetail() {
               </div>
 
               {/* ── Actions ── */}
-              <div className="flex gap-3 pt-2">
-                <Button variant="outline" className="flex-1" onClick={() => setEditOpen(false)} disabled={saving}>
-                  Batal
-                </Button>
-                <Button className="flex-1" onClick={handleSave} disabled={saving}>
-                  {saving ? "Menyimpan..." : "Simpan Perubahan"}
-                </Button>
-              </div>
+              {deleteConfirm ? (
+                <div className="space-y-2 pt-2">
+                  <p className="text-sm text-destructive font-medium text-center">
+                    Yakin ingin menghapus customer <strong>{customer?.fullName}</strong>? Tindakan ini tidak dapat dibatalkan.
+                  </p>
+                  <div className="flex gap-3">
+                    <Button variant="outline" className="flex-1" onClick={() => setDeleteConfirm(false)} disabled={saving}>
+                      Batal
+                    </Button>
+                    <Button variant="destructive" className="flex-1" onClick={handleDelete} disabled={saving}>
+                      {saving ? "Menghapus..." : "Ya, Hapus Customer"}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-3 pt-2">
+                  <Button variant="outline" size="icon" className="shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200" onClick={() => setDeleteConfirm(true)} disabled={saving} title="Hapus customer">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" className="flex-1" onClick={() => setEditOpen(false)} disabled={saving}>
+                    Batal
+                  </Button>
+                  <Button className="flex-1" onClick={handleSave} disabled={saving}>
+                    {saving ? "Menyimpan..." : "Simpan Perubahan"}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </SheetContent>
