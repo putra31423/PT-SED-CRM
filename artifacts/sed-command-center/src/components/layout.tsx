@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -68,8 +68,33 @@ const navGroups = [
   },
 ];
 
+function readProfile() {
+  try {
+    const raw = localStorage.getItem("sed_profile");
+    if (raw) return JSON.parse(raw) as { name: string; title: string };
+  } catch {}
+  return { name: "John Doe", title: "CEO" };
+}
+
 export function AppLayout({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
+  const [profile, setProfile] = useState(readProfile);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setProfile({ name: detail.name, title: detail.title });
+    };
+    const storageHandler = () => setProfile(readProfile());
+    window.addEventListener("sed-profile-updated", handler);
+    window.addEventListener("storage", storageHandler);
+    return () => {
+      window.removeEventListener("sed-profile-updated", handler);
+      window.removeEventListener("storage", storageHandler);
+    };
+  }, []);
+
+  const initials = profile.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
 
   const handleLogout = () => {
     localStorage.removeItem("sed_user");
@@ -131,15 +156,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 <span className="group-data-[collapsible=icon]:hidden">Logout</span>
               </Button>
             </div>
-            <div className="flex items-center gap-3 p-4 border-t border-sidebar-border group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:justify-center">
-              <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-medium shrink-0">
-                JD
+            <Link
+              href="/settings"
+              className="flex items-center gap-3 p-4 border-t border-sidebar-border group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:justify-center cursor-pointer hover:bg-sidebar-accent/30 transition-colors rounded-b-lg"
+            >
+              <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-medium shrink-0 select-none">
+                {initials}
               </div>
               <div className="flex flex-col group-data-[collapsible=icon]:hidden overflow-hidden">
-                <span className="text-sm font-medium text-sidebar-foreground truncate">John Doe</span>
-                <span className="text-xs text-sidebar-foreground/70 truncate">CEO</span>
+                <span className="text-sm font-medium text-sidebar-foreground truncate">{profile.name}</span>
+                <span className="text-xs text-sidebar-foreground/70 truncate">{profile.title}</span>
               </div>
-            </div>
+            </Link>
           </SidebarFooter>
         </Sidebar>
         <main className="flex-1 overflow-auto bg-card text-card-foreground transition-all duration-300">

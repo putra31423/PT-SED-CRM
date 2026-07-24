@@ -24,11 +24,22 @@ const NAV: { id: Section; label: string; icon: React.ElementType }[] = [
 ];
 
 // ── Profile Section ──────────────────────────────────────────────────────────
+const PROFILE_KEY = "sed_profile";
+
+function readProfile() {
+  try {
+    const raw = localStorage.getItem(PROFILE_KEY);
+    if (raw) return JSON.parse(raw) as { name: string; title: string; email: string; phone: string };
+  } catch {}
+  return { name: "John Doe", title: "CEO", email: "ceo@solusieradigital.com", phone: "+62 811 2345 6789" };
+}
+
 function ProfileSection({ onSave }: { onSave: () => void }) {
-  const [name, setName]   = useState("Admin SED");
-  const [title, setTitle] = useState("Chief Executive Officer");
-  const [email, setEmail] = useState("ceo@solusieradigital.com");
-  const [phone, setPhone] = useState("+62 811 2345 6789");
+  const saved = readProfile();
+  const [name, setName]   = useState(saved.name);
+  const [title, setTitle] = useState(saved.title);
+  const [email, setEmail] = useState(saved.email);
+  const [phone, setPhone] = useState(saved.phone);
   const [avatar, setAvatar] = useState<string | null>(() => localStorage.getItem("sed-avatar"));
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -216,7 +227,14 @@ function ProfileSection({ onSave }: { onSave: () => void }) {
       </Card>
 
       <div className="flex justify-end">
-        <Button className="px-8" onClick={onSave}>Simpan Profil</Button>
+        <Button className="px-8" onClick={() => {
+          const profile = { name, title, email, phone };
+          localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+          window.dispatchEvent(new CustomEvent("sed-profile-updated", { detail: profile }));
+          onSave();
+        }}>
+          Simpan Profil
+        </Button>
       </div>
     </div>
   );
