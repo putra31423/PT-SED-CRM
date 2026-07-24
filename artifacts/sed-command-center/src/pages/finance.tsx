@@ -208,7 +208,24 @@ export default function FinanceHub() {
 
   // Shared state for filters
   const [buFilter, setBuFilter] = useState(buFromUrl || "all");
-  const [periodFilter, setPeriodFilter] = useState("this_month");
+  const [periodFilter, setPeriodFilter] = useState("all_time");
+
+  // Compute date range from period
+  function getPeriodDates(period: string): { startDate?: string; endDate?: string } {
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    switch (period) {
+      case "daily":   return { startDate: fmt(now), endDate: fmt(now) };
+      case "weekly":  { const s = new Date(now); s.setDate(s.getDate() - s.getDay()); return { startDate: fmt(s), endDate: fmt(now) }; }
+      case "monthly": return { startDate: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`, endDate: fmt(now) };
+      case "quarterly": { const qs = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1); return { startDate: fmt(qs), endDate: fmt(now) }; }
+      case "yearly":  return { startDate: `${now.getFullYear()}-01-01`, endDate: fmt(now) };
+      case "all_time": return {};
+      default: return {};
+    }
+  }
+  const { startDate, endDate } = getPeriodDates(periodFilter);
   const [exporting, setExporting] = useState(false);
 
   const { data: businessUnits } = useListBusinessUnits();
@@ -283,6 +300,21 @@ export default function FinanceHub() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Time range filter */}
+          <Select value={periodFilter} onValueChange={setPeriodFilter}>
+            <SelectTrigger className="w-[150px] bg-background">
+              <CalendarIcon className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
+              <SelectValue placeholder="All Time" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="quarterly">Quarterly</SelectItem>
+              <SelectItem value="yearly">Yearly</SelectItem>
+              <SelectItem value="all_time">All Time</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={buFilter} onValueChange={setBuFilter}>
             <SelectTrigger className="w-[200px] bg-background">
               <SelectValue placeholder="All Business Units" />
@@ -358,10 +390,10 @@ export default function FinanceHub() {
         </TabsList>
 
         <TabsContent value="income" className="mt-0 outline-none">
-          <IncomeTab buFilter={buFilter === "all" ? null : parseInt(buFilter)} businessUnits={businessUnits ?? []} />
+          <IncomeTab buFilter={buFilter === "all" ? null : parseInt(buFilter)} businessUnits={businessUnits ?? []} startDate={startDate} endDate={endDate} />
         </TabsContent>
         <TabsContent value="expenses" className="mt-0 outline-none">
-          <ExpenseTab buFilter={buFilter === "all" ? null : parseInt(buFilter)} businessUnits={businessUnits ?? []} />
+          <ExpenseTab buFilter={buFilter === "all" ? null : parseInt(buFilter)} businessUnits={businessUnits ?? []} startDate={startDate} endDate={endDate} />
         </TabsContent>
         <TabsContent value="profit-loss" className="mt-0 outline-none">
           <ProfitLossTab buFilter={buFilter === "all" ? null : parseInt(buFilter)} />
@@ -376,11 +408,11 @@ export default function FinanceHub() {
 
 type SortDir = "asc" | "desc";
 
-function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; businessUnits: { id: number; name: string }[] }) {
+function IncomeTab({ buFilter, businessUnits, startDate, endDate }: { buFilter: number | null; businessUnits: { id: number; name: string }[]; startDate?: string; endDate?: string }) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "amount" | "status">("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const { data: incomeList, isLoading } = useListIncome({ businessUnitId: buFilter ?? undefined, limit: 10000 });
+  const { data: incomeList, isLoading } = useListIncome({ businessUnitId: buFilter ?? undefined, limit: 10000, startDate: startDate ?? undefined, endDate: endDate ?? undefined });
   const { data: customers } = useListCustomers({ limit: 1000 });
   const createIncome = useCreateIncome();
   const updateIncome = useUpdateIncome();
@@ -1032,11 +1064,11 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
   );
 }
 
-function ExpenseTab({ buFilter, businessUnits }: { buFilter: number | null; businessUnits: { id: number; name: string }[] }) {
+function ExpenseTab({ buFilter, businessUnits, startDate, endDate }: { buFilter: number | null; businessUnits: { id: number; name: string }[]; startDate?: string; endDate?: string }) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "amount">("date");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const { data: expenseList, isLoading } = useListExpenses({ businessUnitId: buFilter ?? undefined, limit: 10000 });
+  const { data: expenseList, isLoading } = useListExpenses({ businessUnitId: buFilter ?? undefined, limit: 10000, startDate: startDate ?? undefined, endDate: endDate ?? undefined });
   const createExpense = useCreateExpense();
   const updateExpense = useUpdateExpense();
   const deleteExpense = useDeleteExpense();
