@@ -61,6 +61,7 @@ function ProfileSection({ onSave }: { onSave: () => void }) {
       const dataUrl = e.target?.result as string;
       setAvatar(dataUrl);
       localStorage.setItem("sed-avatar", dataUrl);
+      window.dispatchEvent(new CustomEvent("sed-avatar-updated"));
       toast({ title: "Avatar berhasil diubah ✓" });
     };
     reader.readAsDataURL(file);
@@ -82,6 +83,7 @@ function ProfileSection({ onSave }: { onSave: () => void }) {
   function removeAvatar() {
     setAvatar(null);
     localStorage.removeItem("sed-avatar");
+    window.dispatchEvent(new CustomEvent("sed-avatar-updated"));
     toast({ title: "Avatar dihapus" });
   }
 

@@ -79,18 +79,26 @@ function readProfile() {
 export function AppLayout({ children }: { children: ReactNode }) {
   const [location, setLocation] = useLocation();
   const [profile, setProfile] = useState(readProfile);
+  const [avatar, setAvatar] = useState<string | null>(() => localStorage.getItem("sed-avatar"));
 
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       setProfile({ name: detail.name, title: detail.title });
     };
-    const storageHandler = () => setProfile(readProfile());
+    const storageHandler = () => {
+      setProfile(readProfile());
+      setAvatar(localStorage.getItem("sed-avatar"));
+    };
     window.addEventListener("sed-profile-updated", handler);
     window.addEventListener("storage", storageHandler);
+    // Listen for avatar changes from same tab
+    const avatarHandler = () => setAvatar(localStorage.getItem("sed-avatar"));
+    window.addEventListener("sed-avatar-updated", avatarHandler);
     return () => {
       window.removeEventListener("sed-profile-updated", handler);
       window.removeEventListener("storage", storageHandler);
+      window.removeEventListener("sed-avatar-updated", avatarHandler);
     };
   }, []);
 
@@ -160,8 +168,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
               href="/settings"
               className="flex items-center gap-3 p-4 border-t border-sidebar-border group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:justify-center cursor-pointer hover:bg-sidebar-accent/30 transition-colors rounded-b-lg"
             >
-              <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-medium shrink-0 select-none">
-                {initials}
+              <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-medium shrink-0 select-none overflow-hidden">
+                {avatar
+                  ? <img src={avatar} alt={profile.name} className="w-full h-full object-cover" />
+                  : initials}
               </div>
               <div className="flex flex-col group-data-[collapsible=icon]:hidden overflow-hidden">
                 <span className="text-sm font-medium text-sidebar-foreground truncate">{profile.name}</span>
