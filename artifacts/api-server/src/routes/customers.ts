@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { customersTable, businessUnitsTable } from "@workspace/db";
+import { customersTable, businessUnitsTable, dealsTable, incomeTable } from "@workspace/db";
 import { eq, sql, and, ilike, or } from "drizzle-orm";
 
 const router = Router();
@@ -132,6 +132,9 @@ router.patch("/customers/:id", async (req, res) => {
 router.delete("/customers/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    // Null out FK references to avoid constraint violations
+    await db.update(dealsTable).set({ customerId: null }).where(eq(dealsTable.customerId, id));
+    await db.update(incomeTable).set({ customerId: null }).where(eq(incomeTable.customerId, id));
     await db.delete(customersTable).where(eq(customersTable.id, id));
     res.status(204).end();
   } catch (err) {
