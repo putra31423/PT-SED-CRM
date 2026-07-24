@@ -24,7 +24,7 @@ import {
   SheetTitle, 
   SheetTrigger 
 } from "@/components/ui/sheet";
-import { Search, Plus, Users, ArrowUpRight, Phone, Mail, Building, Clock, X, ArrowLeft } from "lucide-react";
+import { Search, Plus, Users, ArrowUpRight, Phone, Mail, Building, Clock, X, ArrowLeft, ArrowUpDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -53,6 +53,7 @@ export default function CRM() {
   const [location, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"name" | "date_added" | "last_modified">("date_added");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
@@ -265,14 +266,27 @@ export default function CRM() {
 
       <Card className="border-none shadow-sm overflow-hidden flex flex-col">
         <div className="p-4 border-b bg-card flex flex-col sm:flex-row gap-4 justify-between items-center">
-          <div className="relative w-full sm:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Search by name, email, or company..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-background border-input"
-            />
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Search by name, email, or company..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 bg-background border-input"
+              />
+            </div>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+              <SelectTrigger className="w-[170px] bg-background shrink-0">
+                <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name">Nama A–Z</SelectItem>
+                <SelectItem value="date_added">Date Added</SelectItem>
+                <SelectItem value="last_modified">Last Modified</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
             <Button 
@@ -322,7 +336,12 @@ export default function CRM() {
                   </TableRow>
                 ))
               ) : customersData?.data && customersData.data.length > 0 ? (
-                customersData.data.map((customer) => (
+                [...customersData.data].sort((a, b) => {
+                  if (sortBy === "name") return a.fullName.localeCompare(b.fullName);
+                  if (sortBy === "date_added") return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
+                  if (sortBy === "last_modified") return new Date(b.updatedAt ?? 0).getTime() - new Date(a.updatedAt ?? 0).getTime();
+                  return 0;
+                }).map((customer) => (
                   <TableRow key={customer.id} className="hover:bg-muted/30 transition-colors">
                     <TableCell>
                       <div className="flex items-center gap-3">
