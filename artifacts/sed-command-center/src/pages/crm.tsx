@@ -376,9 +376,13 @@ export default function CRM() {
                       <span className="text-sm font-medium">{customer.businessUnitName || "—"}</span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={statusColors[customer.status] || ""}>
-                        {customer.status}
-                      </Badge>
+                      <div className="flex flex-wrap gap-1">
+                        {customer.status?.split(",").map(s => s.trim()).filter(Boolean).map(s => (
+                          <Badge key={s} variant="outline" className={statusColors[s] || ""}>
+                            {s}
+                          </Badge>
+                        ))}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center text-sm text-muted-foreground">

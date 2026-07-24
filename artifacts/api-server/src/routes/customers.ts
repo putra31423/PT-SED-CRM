@@ -14,7 +14,7 @@ router.get("/customers", async (req, res) => {
     const offset = (pageNum - 1) * limitNum;
 
     const conditions: any[] = [];
-    if (status && status !== "null") conditions.push(eq(customersTable.status, status as string));
+    if (status && status !== "null") conditions.push(ilike(customersTable.status, `%${status as string}%`));
     if (businessUnitId && businessUnitId !== "null") conditions.push(eq(customersTable.businessUnitId, parseInt(businessUnitId as string)));
     if (search && search !== "null") {
       conditions.push(

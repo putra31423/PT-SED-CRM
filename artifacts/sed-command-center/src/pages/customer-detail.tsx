@@ -75,7 +75,7 @@ export default function CustomerDetail() {
     email: string; nationality: string; country: string; address: string;
     businessUnitId: string; serviceInterested: string; leadSource: string;
     facebook: string; instagram: string; website: string; notes: string;
-    status: CustomerStatus; lastContact: string; nextFollowUp: string;
+    statusList: string[]; lastContact: string; nextFollowUp: string;
     assignedStaff: string; tags: string;
   } | null>(null);
 
@@ -97,7 +97,7 @@ export default function CustomerDetail() {
       instagram:         customer.instagram ?? "",
       website:           customer.website ?? "",
       notes:             customer.notes ?? "",
-      status:            (customer.status as CustomerStatus) ?? "Lead",
+      statusList:        customer.status ? customer.status.split(",").map(s => s.trim()).filter(Boolean) : ["Lead"],
       lastContact:       customer.lastContact ?? "",
       nextFollowUp:      customer.nextFollowUp ?? "",
       assignedStaff:     customer.assignedStaff ?? "",
@@ -136,7 +136,7 @@ export default function CustomerDetail() {
           instagram:         form.instagram || undefined,
           website:           form.website || undefined,
           notes:             form.notes || undefined,
-          status:            form.status,
+          status:            (form.statusList ?? []).length > 0 ? (form.statusList ?? ["Lead"]).join(',') : 'Lead',
           lastContact:       form.lastContact || undefined,
           nextFollowUp:      form.nextFollowUp || undefined,
           assignedStaff:     form.assignedStaff || undefined,
@@ -217,11 +217,13 @@ export default function CustomerDetail() {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl font-bold tracking-tight text-foreground">{customer.fullName}</h1>
-              <Badge variant="outline" className={statusColors[customer.status] || ""}>
-                {customer.status === "VIP" && <Crown className="w-3 h-3 mr-1" />}
-                {customer.status === "Repeat Customer" && <Repeat2 className="w-3 h-3 mr-1" />}
-                {customer.status}
-              </Badge>
+              {customer.status?.split(",").map(s => s.trim()).filter(Boolean).map(s => (
+                <Badge key={s} variant="outline" className={statusColors[s] || ""}>
+                  {s === "VIP" && <Crown className="w-3 h-3 mr-1" />}
+                  {s === "Repeat Customer" && <Repeat2 className="w-3 h-3 mr-1" />}
+                  {s}
+                </Badge>
+              ))}
             </div>
             {customer.businessName && (
               <div className="flex items-center text-lg text-muted-foreground mb-4">
@@ -487,15 +489,24 @@ export default function CustomerDetail() {
               <div className="space-y-2">
                 <Label className="text-sm font-semibold">Label / Status Customer</Label>
                 <p className="text-xs text-muted-foreground">Tentukan kategori customer ini untuk segmentasi dan prioritas.</p>
-                <div className="grid grid-cols-2 gap-2 mt-2">
+                <p className="text-[11px] text-muted-foreground">Pilih satu atau lebih label.</p>
+                <div className="grid grid-cols-2 gap-2 mt-1">
                   {STATUS_OPTIONS.map(opt => {
                     const Icon = opt.icon;
-                    const active = form.status === opt.value;
+                    const active = (form.statusList ?? []).includes(opt.value);
                     return (
                       <button
                         key={opt.value}
                         type="button"
-                        onClick={() => setF("status", opt.value as CustomerStatus)}
+                        onClick={() => {
+                          const current = form.statusList;
+                          setF("statusList", active
+                            ? current.filter(s => s !== opt.value).length > 0
+                              ? current.filter(s => s !== opt.value)
+                              : current  // prevent deselecting all
+                            : [...current, opt.value]
+                          );
+                        }}
                         className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all text-left ${
                           active
                             ? `${opt.color} border-current ring-2 ring-current/20`
