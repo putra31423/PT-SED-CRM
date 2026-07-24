@@ -84,14 +84,16 @@ router.post("/customers", async (req, res) => {
 router.get("/customers/stats/summary", async (req, res) => {
   try {
     const [total] = await db.select({ count: sql<number>`count(*)` }).from(customersTable);
-    const byStatus = await db
-      .select({ status: customersTable.status, count: sql<number>`count(*)` })
-      .from(customersTable)
-      .groupBy(customersTable.status);
+    const byStatus = await db.execute<{ status: string; count: string }>(sql`
+      SELECT trim(label) AS status, count(*) AS count
+      FROM customers, unnest(string_to_array(status, ',')) AS label
+      GROUP BY trim(label)
+      ORDER BY count DESC
+    `);
     res.json({
       total: Number(total?.count ?? 0),
       growth: 12.5,
-      byStatus: byStatus.map((r) => ({ status: r.status, count: Number(r.count) })),
+      byStatus: byStatus.rows.map((r) => ({ status: r.status, count: Number(r.count) })),
     });
   } catch (err) {
     req.log.error(err);
