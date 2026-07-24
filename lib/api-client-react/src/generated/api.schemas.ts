@@ -726,6 +726,10 @@ businessUnitId?: number | null;
 /**
  * @nullable
  */
+customerId?: number | null;
+/**
+ * @nullable
+ */
 startDate?: string | null;
 /**
  * @nullable

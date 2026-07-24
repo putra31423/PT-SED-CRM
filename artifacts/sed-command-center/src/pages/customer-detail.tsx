@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRoute, useLocation } from "wouter";
 import {
-  useGetCustomer, useUpdateCustomer, useDeleteCustomer, useListBusinessUnits,
+  useGetCustomer, useUpdateCustomer, useDeleteCustomer, useListBusinessUnits, useListIncome,
   getGetCustomerQueryKey, getListCustomersQueryKey, getGetCustomerStatsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -26,7 +26,9 @@ import {
   Calendar, Briefcase, FileText, CheckCircle2, MessageSquare,
   Facebook, Instagram, Tag, Clock, Plus, User, Pencil,
   Star, Crown, Users, TrendingUp, Handshake, Search, Repeat2, Trash2,
+  Receipt, TrendingDown,
 } from "lucide-react";
+import { formatIDR } from "@/lib/utils";
 
 const STATUS_OPTIONS = [
   { value: "Lead",            label: "Lead",           icon: Search,    color: "bg-slate-100 text-slate-700 border-slate-300" },
@@ -61,6 +63,9 @@ export default function CustomerDetail() {
   const { data: businessUnits } = useListBusinessUnits();
   const updateCustomer = useUpdateCustomer();
   const deleteCustomer = useDeleteCustomer();
+  const { data: incomeHistory, isLoading: incomeLoading } = useListIncome(
+    { customerId: id, limit: 10000 }
+  );
 
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -407,6 +412,59 @@ export default function CustomerDetail() {
                 <Clock className="w-4 h-4" />
                 <span>Last contact: {customer.lastContact ? new Date(customer.lastContact).toLocaleDateString() : "Never"}</span>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Transaction History ── */}
+          <Card className="border-none shadow-sm">
+            <CardHeader className="pb-4 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-lg">Riwayat Transaksi</CardTitle>
+                {incomeHistory && incomeHistory.data.length > 0 && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {incomeHistory.data.length} transaksi · Total {formatIDR(incomeHistory.data.reduce((s, r) => s + r.amount, 0))}
+                  </p>
+                )}
+              </div>
+              <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <Receipt className="w-4 h-4" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {incomeLoading ? (
+                <div className="space-y-3">
+                  {[1,2,3].map(i => <Skeleton key={i} className="h-14 w-full rounded-lg" />)}
+                </div>
+              ) : incomeHistory && incomeHistory.data.length > 0 ? (
+                <div className="space-y-2">
+                  {incomeHistory.data.map((trx) => (
+                    <div key={trx.id} className="flex items-center justify-between px-4 py-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors border border-muted/60">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${trx.status === "Received" ? "bg-green-50 text-green-600" : "bg-amber-50 text-amber-600"}`}>
+                          {trx.status === "Received" ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {trx.category || "Transaksi"}{trx.invoiceNumber ? ` · #${trx.invoiceNumber}` : ""}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{trx.date ? new Date(trx.date).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "—"} · {trx.businessUnitName || "—"}</p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0 ml-4">
+                        <p className="text-sm font-semibold text-foreground">{formatIDR(trx.amount)}</p>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${trx.status === "Received" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+                          {trx.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-10 text-muted-foreground bg-muted/20 rounded-xl border border-dashed">
+                  <Receipt className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">Belum ada riwayat transaksi untuk customer ini.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

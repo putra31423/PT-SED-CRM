@@ -26,12 +26,13 @@ function getPeriodDates(period?: string): { startDate?: string; endDate?: string
 
 router.get("/finance/income", async (req, res) => {
   try {
-    const { businessUnitId, startDate, endDate, status, page = "1", limit = "20" } = req.query;
+    const { businessUnitId, customerId, startDate, endDate, status, page = "1", limit = "20" } = req.query;
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);
     const offset = (pageNum - 1) * limitNum;
     const conditions: any[] = [];
     if (businessUnitId && businessUnitId !== "null") conditions.push(eq(incomeTable.businessUnitId, parseInt(businessUnitId as string)));
+    if (customerId && customerId !== "null") conditions.push(eq(incomeTable.customerId, parseInt(customerId as string)));
     if (startDate && startDate !== "null") conditions.push(gte(incomeTable.date, startDate as string));
     if (endDate && endDate !== "null") conditions.push(lte(incomeTable.date, endDate as string));
     if (status && status !== "null") conditions.push(eq(incomeTable.status, status as string));
