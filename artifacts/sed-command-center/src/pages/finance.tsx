@@ -25,9 +25,125 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { formatIDR } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Calendar as CalendarIcon, Download, FileSpreadsheet, ChevronDown, TrendingUp, TrendingDown, Wallet, ArrowDownRight, ArrowUpRight, UserPlus, Building2, X, ArrowLeft, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Search, Calendar as CalendarIcon, Download, FileSpreadsheet, ChevronDown, TrendingUp, TrendingDown, Wallet, ArrowDownRight, ArrowUpRight, UserPlus, Building2, X, ArrowLeft, ArrowUpDown, ArrowUp, ArrowDown, Check, ChevronsUpDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { Link } from "wouter";
 import { AreaChart, Area, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ComposedChart, Line } from "recharts";
+
+// ── Customer searchable combobox ─────────────────────────────────────────────
+type CustomerOption = { id: number; fullName: string; businessName?: string | null };
+
+function CustomerCombobox({
+  customers,
+  value,
+  onChange,
+  onAddNew,
+}: {
+  customers: CustomerOption[];
+  value: string;
+  onChange: (v: string) => void;
+  onAddNew: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const selected = customers.find(c => String(c.id) === value);
+  const filtered = search.trim()
+    ? customers.filter(c =>
+        c.fullName.toLowerCase().includes(search.toLowerCase()) ||
+        (c.businessName ?? "").toLowerCase().includes(search.toLowerCase())
+      )
+    : customers;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between font-normal h-9 px-3 text-left"
+        >
+          {selected ? (
+            <span className="truncate flex-1">
+              {selected.fullName}
+              {selected.businessName && <span className="text-muted-foreground ml-1">· {selected.businessName}</span>}
+            </span>
+          ) : (
+            <span className="text-muted-foreground flex-1 truncate">
+              {customers.length === 0 ? "Belum ada customer — tambah dulu" : "Pilih Customer (opsional)"}
+            </span>
+          )}
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="p-0"
+        style={{ width: "var(--radix-popover-trigger-width)" }}
+        align="start"
+      >
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder="Ketik nama customer..."
+            value={search}
+            onValueChange={setSearch}
+          />
+          <CommandList className="max-h-56 overflow-y-auto">
+            {filtered.length === 0 && search.trim() ? (
+              <CommandEmpty>
+                <div className="py-3 text-center text-sm text-muted-foreground space-y-2">
+                  <p>Tidak ditemukan: <strong>{search}</strong></p>
+                  <button
+                    type="button"
+                    onClick={() => { setOpen(false); onAddNew(); }}
+                    className="text-primary hover:underline text-xs font-medium"
+                  >
+                    + Tambah sebagai customer baru
+                  </button>
+                </div>
+              </CommandEmpty>
+            ) : null}
+            <CommandGroup>
+              <CommandItem
+                value="none"
+                onSelect={() => { onChange(""); setSearch(""); setOpen(false); }}
+                className="text-muted-foreground"
+              >
+                <Check className={cn("mr-2 h-4 w-4 shrink-0", !value ? "opacity-100" : "opacity-0")} />
+                — Tidak ada —
+              </CommandItem>
+              {filtered.map(c => (
+                <CommandItem
+                  key={c.id}
+                  value={String(c.id)}
+                  onSelect={() => { onChange(String(c.id)); setSearch(""); setOpen(false); }}
+                >
+                  <Check className={cn("mr-2 h-4 w-4 shrink-0", value === String(c.id) ? "opacity-100" : "opacity-0")} />
+                  <span className="truncate">{c.fullName}</span>
+                  {c.businessName && (
+                    <span className="ml-1 text-xs text-muted-foreground shrink-0">· {c.businessName}</span>
+                  )}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+          <div className="border-t p-2">
+            <button
+              type="button"
+              onClick={() => { setOpen(false); onAddNew(); }}
+              className="flex items-center gap-1.5 text-xs text-primary hover:underline font-medium w-full px-2 py-1 rounded hover:bg-muted/50 transition-colors"
+            >
+              <UserPlus className="w-3 h-3" />
+              Tambah Customer Baru
+            </button>
+          </div>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 const INCOME_CATEGORIES = ["Service", "Product", "Consultation", "License", "Commission", "Rental", "Other"] as const;
 const EXPENSE_CATEGORIES = ["Operational", "Salary", "Marketing", "Equipment", "Office", "Travel", "Tax", "Other"] as const;
@@ -557,40 +673,12 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
                       Tambah Customer Baru
                     </button>
                   </div>
-                  <Select value={form.customerId} onValueChange={(v) => setF("customerId", v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={
-                        (customers?.data?.length ?? 0) === 0
-                          ? "Belum ada customer — tambah dulu"
-                          : "Pilih Customer (opsional)"
-                      } />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(customers?.data?.length ?? 0) === 0 ? (
-                        <div className="px-3 py-6 text-center text-sm text-muted-foreground space-y-2">
-                          <UserPlus className="w-6 h-6 mx-auto opacity-40" />
-                          <p>Belum ada customer.</p>
-                          <button
-                            type="button"
-                            onClick={() => { setAddCustOpen(true); }}
-                            className="text-primary hover:underline font-medium text-xs"
-                          >
-                            + Tambah Customer Baru
-                          </button>
-                        </div>
-                      ) : (
-                        <>
-                          <SelectItem value="none">— Tidak ada —</SelectItem>
-                          {(customers?.data ?? []).map(c => (
-                            <SelectItem key={c.id} value={c.id.toString()}>
-                              {c.fullName}
-                              {c.businessName ? <span className="text-muted-foreground ml-1 text-xs">· {c.businessName}</span> : null}
-                            </SelectItem>
-                          ))}
-                        </>
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <CustomerCombobox
+                    customers={customers?.data ?? []}
+                    value={form.customerId}
+                    onChange={(v) => setF("customerId", v)}
+                    onAddNew={() => setAddCustOpen(true)}
+                  />
                 </div>
               </div>
 
