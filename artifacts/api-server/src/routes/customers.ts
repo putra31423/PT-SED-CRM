@@ -62,8 +62,13 @@ router.get("/customers", async (req, res) => {
 router.post("/customers", async (req, res) => {
   try {
     const body = req.body;
-    const count = await db.select({ count: sql<number>`count(*)` }).from(customersTable);
-    const customerId = `CUS-${String(Number(count[0]?.count ?? 0) + 1).padStart(4, "0")}`;
+    // Use MAX of existing customer_id numbers to avoid collision when rows have been deleted
+    const [maxRow] = await db
+      .select({ maxId: sql<string>`max(customer_id)` })
+      .from(customersTable);
+    const lastNum = maxRow?.maxId ? parseInt(maxRow.maxId.replace("CUS-", ""), 10) : 0;
+    const nextNum = isNaN(lastNum) ? 1 : lastNum + 1;
+    const customerId = `CUS-${String(nextNum).padStart(4, "0")}`;
     const [customer] = await db
       .insert(customersTable)
       .values({ ...body, customerId })
