@@ -1248,6 +1248,14 @@ function ExpenseTab({ buFilter, businessUnits }: { buFilter: number | null; busi
               : <ArrowDown className="w-4 h-4 text-primary" />}
           </button>
         </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {/* Total expense display */}
+          <div className="text-right">
+            <p className="text-[11px] text-muted-foreground leading-tight">Total Expense</p>
+            <p className="text-base font-bold text-red-600 leading-tight">
+              {isLoading ? "—" : formatIDR(expenseList?.totalAmount ?? 0)}
+            </p>
+          </div>
         <Sheet open={isAddOpen} onOpenChange={(v) => { setIsAddOpen(v); if (!v) resetForm(); }}>
           <SheetTrigger asChild>
             <Button className="shrink-0 bg-red-600 hover:bg-red-700 text-white">
@@ -1364,6 +1372,7 @@ function ExpenseTab({ buFilter, businessUnits }: { buFilter: number | null; busi
             </SheetFooter>
           </SheetContent>
         </Sheet>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
