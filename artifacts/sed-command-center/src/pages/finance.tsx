@@ -5,7 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   useListIncome, useListExpenses, useGetProfitLoss, useGetCashflowDetail,
   useListBusinessUnits, useListCustomers, useCreateIncome, useCreateExpense, useCreateCustomer,
-  useUpdateIncome, useUpdateExpense,
+  useUpdateIncome, useUpdateExpense, useDeleteIncome, useDeleteExpense,
   getListIncomeQueryKey, getListExpensesQueryKey, getListCustomersQueryKey,
   getGetDashboardSummaryQueryKey, getGetDashboardRevenueChartQueryKey,
   getGetDashboardCashflowQueryKey, getGetTopBusinessUnitsQueryKey,
@@ -384,6 +384,7 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
   const { data: customers } = useListCustomers({ limit: 1000 });
   const createIncome = useCreateIncome();
   const updateIncome = useUpdateIncome();
+  const deleteIncome = useDeleteIncome();
   const createCustomer = useCreateCustomer();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -394,6 +395,7 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
   const [editItem, setEditItem] = useState<Income | null>(null);
   const [editForm, setEditForm] = useState<Record<string, string>>({});
   const [editSaving, setEditSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   function openIncomeEdit(item: Income) {
     setEditItem(item);
@@ -445,6 +447,28 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
       setEditItem(null);
     } catch {
       toast({ title: "Gagal menyimpan", variant: "destructive" });
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function handleDeleteIncome() {
+    if (!editItem) return;
+    setEditSaving(true);
+    try {
+      await deleteIncome.mutateAsync({ id: editItem.id });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListIncomeQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardRevenueChartQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardCashflowQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetTopBusinessUnitsQueryKey() }),
+      ]);
+      toast({ title: "Income berhasil dihapus" });
+      setEditItem(null);
+      setDeleteConfirm(false);
+    } catch {
+      toast({ title: "Gagal menghapus", variant: "destructive" });
     } finally {
       setEditSaving(false);
     }
@@ -973,11 +997,25 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
             <Textarea value={editForm.description ?? ""} onChange={e => setEF("description", e.target.value)} rows={2} />
           </div>
         </div>
-        <SheetFooter className="px-6 py-4 border-t shrink-0 flex gap-2">
-          <Button variant="outline" className="flex-1" onClick={() => setEditItem(null)} disabled={editSaving}>Batal</Button>
-          <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={handleEditSave} disabled={editSaving}>
-            {editSaving ? "Menyimpan..." : "Simpan Perubahan"}
-          </Button>
+        <SheetFooter className="px-6 py-4 border-t shrink-0">
+          {deleteConfirm ? (
+            <div className="flex gap-2 w-full">
+              <Button variant="outline" className="flex-1" onClick={() => setDeleteConfirm(false)} disabled={editSaving}>Batal</Button>
+              <Button className="flex-1 bg-red-600 hover:bg-red-700" onClick={handleDeleteIncome} disabled={editSaving}>
+                {editSaving ? "Menghapus..." : "Ya, Hapus"}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-2 w-full">
+              <Button variant="outline" size="icon" className="shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200" onClick={() => setDeleteConfirm(true)} disabled={editSaving} title="Hapus transaksi">
+                <X className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setEditItem(null)} disabled={editSaving}>Batal</Button>
+              <Button className="flex-1 bg-green-600 hover:bg-green-700" onClick={handleEditSave} disabled={editSaving}>
+                {editSaving ? "Menyimpan..." : "Simpan Perubahan"}
+              </Button>
+            </div>
+          )}
         </SheetFooter>
       </SheetContent>
     </Sheet>
@@ -992,6 +1030,7 @@ function ExpenseTab({ buFilter, businessUnits }: { buFilter: number | null; busi
   const { data: expenseList, isLoading } = useListExpenses({ businessUnitId: buFilter ?? undefined, limit: 10000 });
   const createExpense = useCreateExpense();
   const updateExpense = useUpdateExpense();
+  const deleteExpense = useDeleteExpense();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -1001,6 +1040,7 @@ function ExpenseTab({ buFilter, businessUnits }: { buFilter: number | null; busi
   const [editItem, setEditItem] = useState<Expense | null>(null);
   const [editForm, setEditForm] = useState<Record<string, string>>({});
   const [editSaving, setEditSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   function openExpenseEdit(item: Expense) {
     setEditItem(item);
@@ -1050,6 +1090,28 @@ function ExpenseTab({ buFilter, businessUnits }: { buFilter: number | null; busi
       setEditItem(null);
     } catch {
       toast({ title: "Gagal menyimpan", variant: "destructive" });
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  async function handleDeleteExpense() {
+    if (!editItem) return;
+    setEditSaving(true);
+    try {
+      await deleteExpense.mutateAsync({ id: editItem.id });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardRevenueChartQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetDashboardCashflowQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetTopBusinessUnitsQueryKey() }),
+      ]);
+      toast({ title: "Expense berhasil dihapus" });
+      setEditItem(null);
+      setDeleteConfirm(false);
+    } catch {
+      toast({ title: "Gagal menghapus", variant: "destructive" });
     } finally {
       setEditSaving(false);
     }
@@ -1412,11 +1474,25 @@ function ExpenseTab({ buFilter, businessUnits }: { buFilter: number | null; busi
             <Textarea value={editForm.description ?? ""} onChange={e => setEF("description", e.target.value)} rows={2} />
           </div>
         </div>
-        <SheetFooter className="px-6 py-4 border-t shrink-0 flex gap-2">
-          <Button variant="outline" className="flex-1" onClick={() => setEditItem(null)} disabled={editSaving}>Batal</Button>
-          <Button className="flex-1 bg-red-600 hover:bg-red-700" onClick={handleEditSave} disabled={editSaving}>
-            {editSaving ? "Menyimpan..." : "Simpan Perubahan"}
-          </Button>
+        <SheetFooter className="px-6 py-4 border-t shrink-0">
+          {deleteConfirm ? (
+            <div className="flex gap-2 w-full">
+              <Button variant="outline" className="flex-1" onClick={() => setDeleteConfirm(false)} disabled={editSaving}>Batal</Button>
+              <Button className="flex-1 bg-red-600 hover:bg-red-700" onClick={handleDeleteExpense} disabled={editSaving}>
+                {editSaving ? "Menghapus..." : "Ya, Hapus"}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-2 w-full">
+              <Button variant="outline" size="icon" className="shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50 border-red-200" onClick={() => setDeleteConfirm(true)} disabled={editSaving} title="Hapus transaksi">
+                <X className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setEditItem(null)} disabled={editSaving}>Batal</Button>
+              <Button className="flex-1 bg-red-600 hover:bg-red-700" onClick={handleEditSave} disabled={editSaving}>
+                {editSaving ? "Menyimpan..." : "Simpan Perubahan"}
+              </Button>
+            </div>
+          )}
         </SheetFooter>
       </SheetContent>
     </Sheet>
