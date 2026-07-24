@@ -635,7 +635,15 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
               : <ArrowDown className="w-4 h-4 text-primary" />}
           </button>
         </div>
-        <Sheet open={isAddOpen} onOpenChange={(v) => { setIsAddOpen(v); if (!v) resetForm(); }}>
+        <div className="flex items-center gap-3 shrink-0">
+          {/* Total income display */}
+          <div className="text-right">
+            <p className="text-[11px] text-muted-foreground leading-tight">Total Income</p>
+            <p className="text-base font-bold text-green-600 leading-tight">
+              {isLoading ? "—" : formatIDR(incomeList?.totalAmount ?? 0)}
+            </p>
+          </div>
+          <Sheet open={isAddOpen} onOpenChange={(v) => { setIsAddOpen(v); if (!v) resetForm(); }}>
           <SheetTrigger asChild>
             <Button className="shrink-0 bg-green-600 hover:bg-green-700 text-white">
               <Plus className="w-4 h-4 mr-2" />
@@ -852,6 +860,7 @@ function IncomeTab({ buFilter, businessUnits }: { buFilter: number | null; busin
             </SheetFooter>
           </SheetContent>
         </Sheet>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
