@@ -79,9 +79,12 @@ export default function Reports() {
             <SelectValue placeholder="Period" />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="this_week">This Week</SelectItem>
             <SelectItem value="this_month">This Month</SelectItem>
             <SelectItem value="quarter">This Quarter</SelectItem>
             <SelectItem value="year">This Year</SelectItem>
+            <SelectItem value="all_time">All Time</SelectItem>
           </SelectContent>
         </Select>
       </div>

@@ -5,15 +5,21 @@ import { eq, sql, and, gte, lte } from "drizzle-orm";
 
 const router = Router();
 
-function getPeriodDates(period?: string): { startDate: string; endDate: string } {
+function getPeriodDates(period?: string): { startDate?: string; endDate?: string } {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
   const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   switch (period) {
+    case "today": return { startDate: fmt(now), endDate: fmt(now) };
+    case "this_week": {
+      const s = new Date(now); s.setDate(s.getDate() - s.getDay());
+      return { startDate: fmt(s), endDate: fmt(now) };
+    }
     case "this_month": return { startDate: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`, endDate: fmt(now) };
     case "last_month": { const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1); const le = new Date(now.getFullYear(), now.getMonth(), 0); return { startDate: fmt(lm), endDate: fmt(le) }; }
     case "quarter": { const qs = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1); return { startDate: fmt(qs), endDate: fmt(now) }; }
     case "year": return { startDate: `${now.getFullYear()}-01-01`, endDate: fmt(now) };
+    case "all_time": return {};   // no date filter → all records
     default: return { startDate: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`, endDate: fmt(now) };
   }
 }
@@ -24,27 +30,31 @@ router.get("/reports/revenue", async (req, res) => {
     const { period = "this_month", businessUnitId, groupBy = "month" } = req.query;
     const { startDate, endDate } = getPeriodDates(period as string);
 
-    const incConds: any[] = [gte(incomeTable.date, startDate), lte(incomeTable.date, endDate)];
-    const expConds: any[] = [gte(expensesTable.date, startDate), lte(expensesTable.date, endDate)];
+    const incConds: any[] = [];
+    const expConds: any[] = [];
+    if (startDate) { incConds.push(gte(incomeTable.date, startDate)); expConds.push(gte(expensesTable.date, startDate)); }
+    if (endDate)   { incConds.push(lte(incomeTable.date, endDate));   expConds.push(lte(expensesTable.date, endDate)); }
     if (businessUnitId && businessUnitId !== "null") {
       const buId = parseInt(businessUnitId as string);
       incConds.push(eq(incomeTable.businessUnitId, buId));
       expConds.push(eq(expensesTable.businessUnitId, buId));
     }
+    const incWhere  = incConds.length  > 0 ? and(...incConds)  : undefined;
+    const expWhere  = expConds.length  > 0 ? and(...expConds)  : undefined;
 
     const [totals] = await db.select({
       revenue: sql<number>`coalesce(sum(${incomeTable.amount}::numeric), 0)`,
-    }).from(incomeTable).where(and(...incConds));
+    }).from(incomeTable).where(incWhere);
 
     const [expTotals] = await db.select({
       expenses: sql<number>`coalesce(sum(${expensesTable.amount}::numeric), 0)`,
-    }).from(expensesTable).where(and(...expConds));
+    }).from(expensesTable).where(expWhere);
 
     const monthlyIncome = await db.select({
       label: sql<string>`to_char(${incomeTable.date}::date, 'Mon')`,
       month: sql<number>`date_part('month', ${incomeTable.date}::date)`,
       revenue: sql<number>`coalesce(sum(${incomeTable.amount}::numeric), 0)`,
-    }).from(incomeTable).where(and(...incConds))
+    }).from(incomeTable).where(incWhere)
       .groupBy(sql`to_char(${incomeTable.date}::date, 'Mon'), date_part('month', ${incomeTable.date}::date)`)
       .orderBy(sql`date_part('month', ${incomeTable.date}::date)`);
 
@@ -52,7 +62,7 @@ router.get("/reports/revenue", async (req, res) => {
       label: sql<string>`to_char(${expensesTable.date}::date, 'Mon')`,
       month: sql<number>`date_part('month', ${expensesTable.date}::date)`,
       expenses: sql<number>`coalesce(sum(${expensesTable.amount}::numeric), 0)`,
-    }).from(expensesTable).where(and(...expConds))
+    }).from(expensesTable).where(expWhere)
       .groupBy(sql`to_char(${expensesTable.date}::date, 'Mon'), date_part('month', ${expensesTable.date}::date)`)
       .orderBy(sql`date_part('month', ${expensesTable.date}::date)`);
 
@@ -88,8 +98,12 @@ router.get("/reports/analytics", async (req, res) => {
     const units = await db.select().from(businessUnitsTable);
     const stats = await Promise.all(
       units.map(async (u) => {
-        const [inc] = await db.select({ revenue: sql<number>`coalesce(sum(${incomeTable.amount}::numeric), 0)` }).from(incomeTable).where(and(eq(incomeTable.businessUnitId, u.id), gte(incomeTable.date, startDate), lte(incomeTable.date, endDate)));
-        const [exp] = await db.select({ expenses: sql<number>`coalesce(sum(${expensesTable.amount}::numeric), 0)` }).from(expensesTable).where(and(eq(expensesTable.businessUnitId, u.id), gte(expensesTable.date, startDate), lte(expensesTable.date, endDate)));
+        const incConds: any[] = [eq(incomeTable.businessUnitId, u.id)];
+        const expConds: any[] = [eq(expensesTable.businessUnitId, u.id)];
+        if (startDate) { incConds.push(gte(incomeTable.date, startDate)); expConds.push(gte(expensesTable.date, startDate)); }
+        if (endDate)   { incConds.push(lte(incomeTable.date, endDate));   expConds.push(lte(expensesTable.date, endDate)); }
+        const [inc] = await db.select({ revenue: sql<number>`coalesce(sum(${incomeTable.amount}::numeric), 0)` }).from(incomeTable).where(and(...incConds));
+        const [exp] = await db.select({ expenses: sql<number>`coalesce(sum(${expensesTable.amount}::numeric), 0)` }).from(expensesTable).where(and(...expConds));
         const revenue = Number(inc?.revenue ?? 0);
         const expenses = Number(exp?.expenses ?? 0);
         return { id: u.id, name: u.name, category: u.category, logoUrl: u.logoUrl ?? null, revenue, expenses, profit: revenue - expenses, growth: Math.random() * 30 - 5 };
