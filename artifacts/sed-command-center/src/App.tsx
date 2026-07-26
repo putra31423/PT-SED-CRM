@@ -4,8 +4,11 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 
+import { setAuthTokenGetter } from '@workspace/api-client-react';
+
 import { AppLayout } from '@/components/layout';
 import { AuthGuard } from '@/components/auth-guard';
+import { getAccessToken } from '@/lib/supabase';
 
 import Login from '@/pages/login';
 import Dashboard from '@/pages/dashboard';
@@ -19,6 +22,12 @@ import Reports from '@/pages/reports';
 import Settings from '@/pages/settings';
 
 const queryClient = new QueryClient();
+
+// Registered once at module load, before any query can run. The generated API
+// client calls this before every request and attaches the result as a bearer
+// token, so no individual call site has to know about auth. supabase-js
+// refreshes the token on its own, so this always hands over a current one.
+setAuthTokenGetter(getAccessToken);
 
 function ProtectedRoute({ component: Component, ...rest }: any) {
   return (

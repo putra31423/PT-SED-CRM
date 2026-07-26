@@ -1,5 +1,6 @@
 import { ReactNode, useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { supabase } from "@/lib/supabase";
 import {
   Sidebar,
   SidebarContent,
@@ -73,7 +74,10 @@ function readProfile() {
     const raw = localStorage.getItem("sed_profile");
     if (raw) return JSON.parse(raw) as { name: string; title: string };
   } catch {}
-  return { name: "John Doe", title: "CEO" };
+  // No saved profile yet. Blank rather than a placeholder name — the signed-in
+  // user's email is filled in below, and showing "John Doe" to a real user
+  // reads as a bug.
+  return { name: "", title: "" };
 }
 
 export function AppLayout({ children }: { children: ReactNode }) {
@@ -95,6 +99,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
     // Listen for avatar changes from same tab
     const avatarHandler = () => setAvatar(localStorage.getItem("sed-avatar"));
     window.addEventListener("sed-avatar-updated", avatarHandler);
+
+    // Fall back to the signed-in identity when no profile has been saved, so
+    // the sidebar shows who is actually logged in.
+    supabase.auth.getUser().then(({ data }) => {
+      const email = data.user?.email;
+      if (!email) return;
+      setProfile((p) => (p.name ? p : { name: email, title: "Signed in" }));
+    });
+
     return () => {
       window.removeEventListener("sed-profile-updated", handler);
       window.removeEventListener("storage", storageHandler);
@@ -104,8 +117,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const initials = profile.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
 
-  const handleLogout = () => {
-    localStorage.removeItem("sed_user");
+  const handleLogout = async () => {
+    // Revokes the refresh token server-side and clears the stored session, so
+    // the tab cannot silently mint a new access token afterwards. Removing a
+    // localStorage flag, as this did before, left the session fully valid.
+    await supabase.auth.signOut();
     setLocation("/login");
   };
 
