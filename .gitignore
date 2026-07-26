@@ -37,6 +37,14 @@ yarn-error.log
 testem.log
 /typings
 
+# Local environment (secrets — never commit)
+.env
+.env.local
+!.env.example
+
+# Embedded PGlite database files
+.data/
+
 # System Files
 .DS_Store
 Thumbs.db

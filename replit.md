@@ -42,4 +42,5 @@ _Populate as you build — sharp edges, "always run X before Y" rules._
 
 ## Pointers
 
+- See `RUNNING.md` for running the app locally in VS Code (env setup, ports, VS Code tasks)
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details

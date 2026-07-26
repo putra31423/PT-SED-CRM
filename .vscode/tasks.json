@@ -1,0 +1,56 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Dev: all",
+      "detail": "Start the API server and the web frontend together",
+      "dependsOn": ["Dev: api", "Dev: web"],
+      "dependsOrder": "parallel",
+      "problemMatcher": [],
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "Dev: api",
+      "detail": "Express API on http://localhost:5001",
+      "type": "shell",
+      "command": "pnpm --filter @workspace/api-server run dev",
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "group": "dev", "panel": "dedicated" }
+    },
+    {
+      "label": "Dev: web",
+      "detail": "Vite dev server on http://localhost:5173 (proxies /api to :5001)",
+      "type": "shell",
+      "command": "pnpm --filter @workspace/sed-command-center run dev",
+      "options": { "cwd": "${workspaceFolder}" },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "group": "dev", "panel": "dedicated" }
+    },
+    {
+      "label": "DB: push schema",
+      "detail": "Create/update tables in the database from lib/db/src/schema",
+      "type": "shell",
+      "command": "pnpm --filter @workspace/db run push",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Typecheck",
+      "type": "shell",
+      "command": "pnpm run typecheck",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": ["$tsc"],
+      "group": "test"
+    },
+    {
+      "label": "Install dependencies",
+      "type": "shell",
+      "command": "pnpm install",
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    }
+  ]
+}
