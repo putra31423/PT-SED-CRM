@@ -249,7 +249,9 @@ export default function Reports() {
                           </div>
                           <div className="text-right">
                             <p className="font-bold text-sm">{formatIDR(bu.revenue)}</p>
-                            <p className="text-xs text-green-600">+{bu.growth.toFixed(1)}%</p>
+                            <p className={`text-xs ${bu.growth >= 0 ? "text-green-600" : "text-red-600"}`}>
+                              {bu.growth >= 0 ? "+" : ""}{bu.growth.toFixed(1)}%
+                            </p>
                           </div>
                         </div>
                       </Link>

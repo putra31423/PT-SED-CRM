@@ -409,7 +409,7 @@ export default function SalesPipeline() {
                                 <span className="truncate max-w-[120px]" title={deal.businessUnitName || ""}>
                                   {deal.businessUnitName || "No BU"}
                                 </span>
-                                {deal.probability && (
+                                {deal.probability != null && (
                                   <Badge variant="outline" className={`h-5 text-[10px] ${
                                     deal.probability > 70 ? 'text-green-600 border-green-200 bg-green-50' :
                                     deal.probability > 40 ? 'text-amber-600 border-amber-200 bg-amber-50' : ''

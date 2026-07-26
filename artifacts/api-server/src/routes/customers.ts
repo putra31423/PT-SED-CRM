@@ -110,7 +110,10 @@ router.get("/customers/:id", async (req, res) => {
       .from(customersTable)
       .leftJoin(businessUnitsTable, eq(customersTable.businessUnitId, businessUnitsTable.id))
       .where(eq(customersTable.id, id));
-    if (!row) return res.status(404).json({ error: "Not found" });
+    if (!row) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     res.json({ ...row.customer, businessUnitName: row.businessUnitName ?? null });
   } catch (err) {
     req.log.error(err);
@@ -127,7 +130,10 @@ router.patch("/customers/:id", async (req, res) => {
       .set({ ...req.body, updatedAt: new Date() })
       .where(eq(customersTable.id, id))
       .returning();
-    if (!customer) return res.status(404).json({ error: "Not found" });
+    if (!customer) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     res.json(customer);
   } catch (err) {
     req.log.error(err);
@@ -142,7 +148,11 @@ router.delete("/customers/:id", async (req, res) => {
     // Null out FK references to avoid constraint violations
     await db.update(dealsTable).set({ customerId: null }).where(eq(dealsTable.customerId, id));
     await db.update(incomeTable).set({ customerId: null }).where(eq(incomeTable.customerId, id));
-    await db.delete(customersTable).where(eq(customersTable.id, id));
+    const [deleted] = await db.delete(customersTable).where(eq(customersTable.id, id)).returning();
+    if (!deleted) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     res.status(204).end();
   } catch (err) {
     req.log.error(err);

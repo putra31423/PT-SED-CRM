@@ -71,7 +71,10 @@ router.post("/finance/income", async (req, res) => {
 router.get("/finance/income/:id", async (req, res) => {
   try {
     const [inc] = await db.select().from(incomeTable).where(eq(incomeTable.id, parseInt(req.params.id)));
-    if (!inc) return res.status(404).json({ error: "Not found" });
+    if (!inc) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     res.json({ ...inc, amount: Number(inc.amount), tax: Number(inc.tax) });
   } catch (err) {
     req.log.error(err);
@@ -82,7 +85,10 @@ router.get("/finance/income/:id", async (req, res) => {
 router.patch("/finance/income/:id", async (req, res) => {
   try {
     const [inc] = await db.update(incomeTable).set({ ...req.body, updatedAt: new Date() }).where(eq(incomeTable.id, parseInt(req.params.id))).returning();
-    if (!inc) return res.status(404).json({ error: "Not found" });
+    if (!inc) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     res.json({ ...inc, amount: Number(inc.amount), tax: Number(inc.tax) });
   } catch (err) {
     req.log.error(err);
@@ -92,7 +98,11 @@ router.patch("/finance/income/:id", async (req, res) => {
 
 router.delete("/finance/income/:id", async (req, res) => {
   try {
-    await db.delete(incomeTable).where(eq(incomeTable.id, parseInt(req.params.id)));
+    const [deleted] = await db.delete(incomeTable).where(eq(incomeTable.id, parseInt(req.params.id))).returning();
+    if (!deleted) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     res.status(204).end();
   } catch (err) {
     req.log.error(err);
@@ -146,7 +156,10 @@ router.post("/finance/expenses", async (req, res) => {
 router.get("/finance/expenses/:id", async (req, res) => {
   try {
     const [exp] = await db.select().from(expensesTable).where(eq(expensesTable.id, parseInt(req.params.id)));
-    if (!exp) return res.status(404).json({ error: "Not found" });
+    if (!exp) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     res.json({ ...exp, amount: Number(exp.amount), tax: Number(exp.tax) });
   } catch (err) {
     req.log.error(err);
@@ -157,7 +170,10 @@ router.get("/finance/expenses/:id", async (req, res) => {
 router.patch("/finance/expenses/:id", async (req, res) => {
   try {
     const [exp] = await db.update(expensesTable).set({ ...req.body, updatedAt: new Date() }).where(eq(expensesTable.id, parseInt(req.params.id))).returning();
-    if (!exp) return res.status(404).json({ error: "Not found" });
+    if (!exp) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     res.json({ ...exp, amount: Number(exp.amount), tax: Number(exp.tax) });
   } catch (err) {
     req.log.error(err);
@@ -167,7 +183,11 @@ router.patch("/finance/expenses/:id", async (req, res) => {
 
 router.delete("/finance/expenses/:id", async (req, res) => {
   try {
-    await db.delete(expensesTable).where(eq(expensesTable.id, parseInt(req.params.id)));
+    const [deleted] = await db.delete(expensesTable).where(eq(expensesTable.id, parseInt(req.params.id))).returning();
+    if (!deleted) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     res.status(204).end();
   } catch (err) {
     req.log.error(err);

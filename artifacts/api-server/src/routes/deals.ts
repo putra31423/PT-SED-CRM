@@ -100,7 +100,10 @@ router.get("/sales/deals/:id", async (req, res) => {
       .leftJoin(customersTable, eq(dealsTable.customerId, customersTable.id))
       .leftJoin(businessUnitsTable, eq(dealsTable.businessUnitId, businessUnitsTable.id))
       .where(eq(dealsTable.id, id));
-    if (!row) return res.status(404).json({ error: "Not found" });
+    if (!row) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     res.json({ ...row.deal, value: Number(row.deal.value), customerName: row.customerName ?? null, businessUnitName: row.businessUnitName ?? null });
   } catch (err) {
     req.log.error(err);
@@ -117,7 +120,10 @@ router.patch("/sales/deals/:id", async (req, res) => {
       .set({ ...req.body, updatedAt: new Date() })
       .where(eq(dealsTable.id, id))
       .returning();
-    if (!deal) return res.status(404).json({ error: "Not found" });
+    if (!deal) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     res.json({ ...deal, value: Number(deal.value) });
   } catch (err) {
     req.log.error(err);
@@ -129,7 +135,11 @@ router.patch("/sales/deals/:id", async (req, res) => {
 router.delete("/sales/deals/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    await db.delete(dealsTable).where(eq(dealsTable.id, id));
+    const [deleted] = await db.delete(dealsTable).where(eq(dealsTable.id, id)).returning();
+    if (!deleted) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     res.status(204).end();
   } catch (err) {
     req.log.error(err);

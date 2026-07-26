@@ -62,7 +62,10 @@ router.get("/business-units/:id", async (req, res) => {
       .select()
       .from(businessUnitsTable)
       .where(eq(businessUnitsTable.id, id));
-    if (!unit) return res.status(404).json({ error: "Not found" });
+    if (!unit) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
 
     // Aggregate stats
     const [incomeAgg] = await db
@@ -114,7 +117,10 @@ router.patch("/business-units/:id", async (req, res) => {
       .set({ ...body, updatedAt: new Date() })
       .where(eq(businessUnitsTable.id, id))
       .returning();
-    if (!unit) return res.status(404).json({ error: "Not found" });
+    if (!unit) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     res.json(unit);
   } catch (err) {
     req.log.error(err);
@@ -130,7 +136,10 @@ router.delete("/business-units/:id", async (req, res) => {
       .delete(businessUnitsTable)
       .where(eq(businessUnitsTable.id, id))
       .returning();
-    if (!deleted) return res.status(404).json({ error: "Not found" });
+    if (!deleted) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
     res.json({ success: true });
   } catch (err) {
     req.log.error(err);

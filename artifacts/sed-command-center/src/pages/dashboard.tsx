@@ -100,7 +100,7 @@ export default function Dashboard() {
 
           {renderKpiCard("Today's Revenue", summary.todayRevenue, <DollarSign className="h-4 w-4 text-primary" />, "Real-time", undefined, "/finance/income")}
           {renderKpiCard("Monthly Revenue", summary.monthlyRevenue, <Briefcase className="h-4 w-4 text-primary" />, "This month", undefined, "/finance/income")}
-          {renderKpiCard("Active Customers", summary.totalCustomers, <Users className="h-4 w-4 text-blue-500" />, "Across all units", undefined, "/crm")}
+          {renderKpiCard("Active Customers", summary.totalCustomers.toLocaleString(), <Users className="h-4 w-4 text-blue-500" />, "Across all units", undefined, "/crm")}
           {renderKpiCard("Transactions", summary.totalTransactions.toLocaleString(), <Activity className="h-4 w-4 text-primary" />, "Total count", undefined, "/finance/income")}
         </div>
       ) : null}
