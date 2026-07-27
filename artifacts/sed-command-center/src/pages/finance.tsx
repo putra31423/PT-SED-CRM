@@ -9,6 +9,7 @@ import {
   getListIncomeQueryKey, getListExpensesQueryKey, getListCustomersQueryKey,
   getGetDashboardSummaryQueryKey, getGetDashboardRevenueChartQueryKey,
   getGetDashboardCashflowQueryKey, getGetTopBusinessUnitsQueryKey,
+  customFetch,
 } from "@workspace/api-client-react";
 import type { Income, Expense } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -24,8 +25,10 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { formatIDR } from "@/lib/utils";
+import { parseCSV, buildImportRows, type ImportRow } from "@/lib/finance-import";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Calendar as CalendarIcon, Download, FileSpreadsheet, ChevronDown, TrendingUp, TrendingDown, Wallet, ArrowDownRight, ArrowUpRight, UserPlus, Building2, X, ArrowLeft, ArrowUpDown, ArrowUp, ArrowDown, Check, ChevronsUpDown } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Plus, Search, Calendar as CalendarIcon, Download, Upload, FileSpreadsheet, ChevronDown, TrendingUp, TrendingDown, Wallet, ArrowDownRight, ArrowUpRight, UserPlus, Building2, X, ArrowLeft, ArrowUpDown, ArrowUp, ArrowDown, Check, ChevronsUpDown, AlertTriangle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
@@ -196,6 +199,126 @@ const EXPENSE_COLS = [
   { key: "paymentMethod", label: "Payment Method" },
 ];
 
+function ImportDialog({
+  open, onOpenChange, kind, rows, fileName, problem, importing, progress,
+  onPickFile, onConfirm, onDownloadTemplate,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  kind: "income" | "expenses";
+  rows: ImportRow[] | null;
+  fileName: string;
+  problem: string | null;
+  importing: boolean;
+  progress: number;
+  onPickFile: (f: File) => void;
+  onConfirm: () => void;
+  onDownloadTemplate: () => void;
+}) {
+  const valid = rows?.filter((r) => r.errors.length === 0) ?? [];
+  const invalid = rows?.filter((r) => r.errors.length > 0) ?? [];
+  const label = kind === "income" ? "Income" : "Expenses";
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Import {label} dari CSV</DialogTitle>
+          <DialogDescription>
+            Formatnya sama persis dengan hasil Export. Cara paling aman: export dulu,
+            edit filenya, lalu import kembali.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Input
+              type="file"
+              accept=".csv,text/csv"
+              disabled={importing}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) onPickFile(f);
+                // Reset so picking the same file twice still fires onChange.
+                e.target.value = "";
+              }}
+              className="h-11"
+            />
+            <Button variant="outline" onClick={onDownloadTemplate} disabled={importing} className="shrink-0">
+              <Download className="w-4 h-4 mr-2" />
+              Template
+            </Button>
+          </div>
+
+          {fileName && !problem && (
+            <p className="text-xs text-muted-foreground">Berkas: {fileName}</p>
+          )}
+
+          {problem && (
+            <div className="flex gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
+              <AlertTriangle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
+              <p>{problem}</p>
+            </div>
+          )}
+
+          {rows && (
+            <div className="space-y-3">
+              <div className="flex gap-4 text-sm">
+                <span className="font-medium text-green-600">{valid.length} baris siap diimpor</span>
+                {invalid.length > 0 && (
+                  <span className="font-medium text-destructive">{invalid.length} baris bermasalah</span>
+                )}
+              </div>
+
+              {invalid.length > 0 && (
+                <div className="max-h-52 overflow-y-auto rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-20">Baris</TableHead>
+                        <TableHead>Masalah</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {invalid.map((r) => (
+                        <TableRow key={r.line}>
+                          <TableCell className="font-mono text-xs">{r.line}</TableCell>
+                          <TableCell className="text-xs text-destructive">{r.errors.join("; ")}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {invalid.length > 0 && valid.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Baris bermasalah akan dilewati. Perbaiki lalu import ulang kalau perlu.
+                </p>
+              )}
+
+              {importing && (
+                <p className="text-sm text-muted-foreground">
+                  Mengimpor… {progress} dari {valid.length}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={importing}>
+            Batal
+          </Button>
+          <Button onClick={onConfirm} disabled={importing || valid.length === 0}>
+            {importing ? "Mengimpor…" : `Import ${valid.length} baris`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function FinanceHub() {
   const [match, params] = useRoute("/finance/:tab?");
   const [location, setLocation] = useLocation();
@@ -229,7 +352,104 @@ export default function FinanceHub() {
   const [exporting, setExporting] = useState(false);
 
   const { data: businessUnits } = useListBusinessUnits();
+  const { data: allCustomers } = useListCustomers({ limit: 1000 });
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const createIncomeMut = useCreateIncome();
+  const createExpenseMut = useCreateExpense();
+
+  // Import lives on the two data tabs only; P&L and cashflow are derived views.
+  const importKind: "income" | "expenses" = tab === "expenses" ? "expenses" : "income";
+  const [importOpen, setImportOpen] = useState(false);
+  const [importRows, setImportRows] = useState<ImportRow[] | null>(null);
+  const [importFileName, setImportFileName] = useState("");
+  const [importProblem, setImportProblem] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+
+  function resetImport() {
+    setImportRows(null);
+    setImportFileName("");
+    setImportProblem(null);
+    setImportProgress(0);
+  }
+
+  async function handleImportFile(file: File) {
+    resetImport();
+    setImportFileName(file.name);
+    try {
+      const grid = parseCSV(await file.text());
+      if (grid.length < 2) {
+        setImportProblem("File tidak berisi baris data (hanya header atau kosong).");
+        return;
+      }
+      const { rows, missingColumns } = buildImportRows(
+        grid,
+        importKind,
+        (businessUnits ?? []).map((u: any) => ({ id: u.id, name: u.name })),
+        (allCustomers?.data ?? []).map((c: any) => ({ id: c.id, name: c.fullName })),
+      );
+      if (missingColumns.length > 0) {
+        setImportProblem(`Kolom wajib tidak ada: ${missingColumns.join(", ")}. Gunakan tombol "Download template".`);
+        return;
+      }
+      setImportRows(rows);
+    } catch {
+      setImportProblem("File tidak bisa dibaca. Pastikan formatnya .csv");
+    }
+  }
+
+  async function runImport() {
+    if (!importRows) return;
+    const valid = importRows.filter((r) => r.errors.length === 0);
+    setImporting(true);
+    setImportProgress(0);
+
+    const failed: { line: number; reason: string }[] = [];
+    // Sequential on purpose: the API creates rows one at a time and a burst of
+    // parallel writes would make a partial failure much harder to explain.
+    for (let i = 0; i < valid.length; i++) {
+      try {
+        if (importKind === "income") {
+          await createIncomeMut.mutateAsync({ data: valid[i].payload as any });
+        } else {
+          await createExpenseMut.mutateAsync({ data: valid[i].payload as any });
+        }
+      } catch (err: any) {
+        failed.push({ line: valid[i].line, reason: err?.message ?? "ditolak server" });
+      }
+      setImportProgress(i + 1);
+    }
+
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getListIncomeQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getListExpensesQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetDashboardRevenueChartQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetDashboardCashflowQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getGetTopBusinessUnitsQueryKey() }),
+    ]);
+
+    setImporting(false);
+    const ok = valid.length - failed.length;
+    if (failed.length === 0) {
+      toast({ title: `${ok} baris berhasil diimpor ✓` });
+      setImportOpen(false);
+      resetImport();
+    } else {
+      toast({
+        title: `${ok} berhasil, ${failed.length} gagal`,
+        description: `Baris gagal: ${failed.slice(0, 5).map((f) => f.line).join(", ")}${failed.length > 5 ? "…" : ""}`,
+        variant: "destructive",
+      });
+    }
+  }
+
+  function downloadTemplate() {
+    const cols = importKind === "income" ? INCOME_COLS : EXPENSE_COLS;
+    downloadCSV(toCSV([], cols), `template_${importKind}.csv`);
+    toast({ title: `Template ${importKind} didownload` });
+  }
 
   const handleTabChange = (value: string) => {
     setLocation(`/finance/${value}`);
@@ -248,15 +468,15 @@ export default function FinanceHub() {
       let cols = INCOME_COLS;
       let filename = "";
 
+      // customFetch, not bare fetch: it attaches the Supabase bearer token.
+      // A bare fetch here returns 401 now that the API requires authentication.
       if (tab === "expenses") {
-        const res = await fetch(`${BASE}/api/finance/expenses?limit=5000${buParam}`);
-        const json = await res.json();
+        const json = await customFetch<any>(`${BASE}/api/finance/expenses?limit=5000${buParam}`);
         rows = (json.data ?? json) as Record<string, unknown>[];
         cols = EXPENSE_COLS;
         filename = `expenses_${new Date().toISOString().slice(0, 10)}.csv`;
       } else {
-        const res = await fetch(`${BASE}/api/finance/income?limit=5000${buParam}`);
-        const json = await res.json();
+        const json = await customFetch<any>(`${BASE}/api/finance/income?limit=5000${buParam}`);
         rows = (json.data ?? json) as Record<string, unknown>[];
         cols = INCOME_COLS;
         filename = `income_${new Date().toISOString().slice(0, 10)}.csv`;
@@ -352,8 +572,30 @@ export default function FinanceHub() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Only the two data tabs can receive rows; P&L and cashflow are derived. */}
+          {(tab === "income" || tab === "expenses") && (
+            <Button variant="outline" onClick={() => { resetImport(); setImportOpen(true); }}>
+              <Upload className="w-4 h-4 mr-2" />
+              Import
+            </Button>
+          )}
         </div>
       </div>
+
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={(v) => { setImportOpen(v); if (!v) resetImport(); }}
+        kind={importKind}
+        rows={importRows}
+        fileName={importFileName}
+        problem={importProblem}
+        importing={importing}
+        progress={importProgress}
+        onPickFile={handleImportFile}
+        onConfirm={runImport}
+        onDownloadTemplate={downloadTemplate}
+      />
 
       {/* BU filter banner — shown when deep-linked from a BU detail card */}
       {buFromUrl && buNameFromUrl && (
