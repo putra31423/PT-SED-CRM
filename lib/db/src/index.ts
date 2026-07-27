@@ -44,3 +44,18 @@ async function createDb(): Promise<NodePgDatabase<typeof schema>> {
 export const db: NodePgDatabase<typeof schema> = await createDb();
 
 export * from "./schema";
+
+/**
+ * Query operators, re-exported so consumers never import drizzle-orm directly.
+ *
+ * pnpm resolves drizzle-orm once per peer-dependency context, and this package
+ * pulls in @electric-sql/pglite while the API server does not — so importing
+ * drizzle-orm from both produced two distinct instances. TypeScript then treats
+ * their types as unrelated, and every `eq(...)` in a route failed with
+ * "separate declarations of a private property 'shouldInlineParams'". It only
+ * surfaced on Vercel, whose compiler resolves both copies at once.
+ *
+ * Routing every consumer through this package guarantees a single instance.
+ * Add operators here as they are needed rather than reaching past this module.
+ */
+export { and, asc, desc, eq, gte, ilike, inArray, isNotNull, isNull, like, lte, ne, not, or, sql } from "drizzle-orm";
