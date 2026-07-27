@@ -6,6 +6,7 @@ import {
   useCreateBusinessUnit,
   useUpdateBusinessUnit,
   getListBusinessUnitsQueryKey,
+  customFetch,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -166,8 +167,10 @@ export default function BusinessUnits() {
     setDeleting(true);
     try {
       const BASE = import.meta.env.BASE_URL?.replace(/\/$/, "") ?? "";
-      const res = await fetch(`${BASE}/api/business-units/${deleteUnit.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Delete failed");
+      // customFetch, not bare fetch: it attaches the Supabase bearer token and
+      // throws on non-2xx. A bare fetch here returns 401 now that the API
+      // requires authentication.
+      await customFetch(`${BASE}/api/business-units/${deleteUnit.id}`, { method: "DELETE" });
       toast({ title: "Business unit dihapus" });
       queryClient.invalidateQueries({ queryKey: getListBusinessUnitsQueryKey() });
       setDeleteUnit(null);
