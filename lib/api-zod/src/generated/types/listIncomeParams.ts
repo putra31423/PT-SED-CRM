@@ -15,6 +15,10 @@ businessUnitId?: number | null;
 /**
  * @nullable
  */
+customerId?: number | null;
+/**
+ * @nullable
+ */
 startDate?: Date | null;
 /**
  * @nullable

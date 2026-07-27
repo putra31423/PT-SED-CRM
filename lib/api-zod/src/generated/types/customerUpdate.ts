@@ -5,7 +5,6 @@
  * SED Command Center API
  * OpenAPI spec version: 0.1.0
  */
-import type { CustomerUpdateStatus } from './customerUpdateStatus';
 
 export interface CustomerUpdate {
   fullName?: string;
@@ -23,7 +22,7 @@ export interface CustomerUpdate {
   instagram?: string;
   website?: string;
   notes?: string;
-  status?: CustomerUpdateStatus;
+  status?: string;
   lastContact?: Date;
   nextFollowUp?: Date;
   assignedStaff?: string;

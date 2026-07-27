@@ -5,7 +5,6 @@
  * SED Command Center API
  * OpenAPI spec version: 0.1.0
  */
-import type { CustomerInputStatus } from './customerInputStatus';
 
 export interface CustomerInput {
   fullName: string;
@@ -23,7 +22,7 @@ export interface CustomerInput {
   instagram?: string;
   website?: string;
   notes?: string;
-  status: CustomerInputStatus;
+  status: string;
   lastContact?: Date;
   nextFollowUp?: Date;
   assignedStaff?: string;

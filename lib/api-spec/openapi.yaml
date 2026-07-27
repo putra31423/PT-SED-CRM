@@ -468,6 +468,13 @@ paths:
           in: query
           schema:
             type: ["integer", "null"]
+        # The handler has always filtered on this — the customer detail page
+        # uses it to show one customer's income history — but the spec omitted
+        # it, so the generated client had no way to pass it.
+        - name: customerId
+          in: query
+          schema:
+            type: ["integer", "null"]
         - name: startDate
           in: query
           schema:
@@ -936,7 +943,12 @@ components:
         notes: { type: ["string", "null"] }
         status:
           type: string
-          enum: [Lead, Prospect, Negotiation, Customer, "Repeat Customer", VIP]
+          # Deliberately NOT an enum. The customer detail page offers a
+          # multi-select and stores the result comma-joined ("Lead,VIP"); the
+          # list endpoint matches it with ILIKE '%...%'. Constraining this to a
+          # single value would reject data the app legitimately produces.
+          # The `status` query parameter above stays an enum: you filter by one
+          # value at a time, and that value is matched as a substring.
         lastContact: { type: ["string", "null"], format: date }
         nextFollowUp: { type: ["string", "null"], format: date }
         assignedStaff: { type: ["string", "null"] }
@@ -992,7 +1004,12 @@ components:
         notes: { type: string }
         status:
           type: string
-          enum: [Lead, Prospect, Negotiation, Customer, "Repeat Customer", VIP]
+          # Deliberately NOT an enum. The customer detail page offers a
+          # multi-select and stores the result comma-joined ("Lead,VIP"); the
+          # list endpoint matches it with ILIKE '%...%'. Constraining this to a
+          # single value would reject data the app legitimately produces.
+          # The `status` query parameter above stays an enum: you filter by one
+          # value at a time, and that value is matched as a substring.
         lastContact: { type: string, format: date }
         nextFollowUp: { type: string, format: date }
         assignedStaff: { type: string }
@@ -1018,7 +1035,12 @@ components:
         notes: { type: string }
         status:
           type: string
-          enum: [Lead, Prospect, Negotiation, Customer, "Repeat Customer", VIP]
+          # Deliberately NOT an enum. The customer detail page offers a
+          # multi-select and stores the result comma-joined ("Lead,VIP"); the
+          # list endpoint matches it with ILIKE '%...%'. Constraining this to a
+          # single value would reject data the app legitimately produces.
+          # The `status` query parameter above stays an enum: you filter by one
+          # value at a time, and that value is matched as a substring.
         lastContact: { type: string, format: date }
         nextFollowUp: { type: string, format: date }
         assignedStaff: { type: string }

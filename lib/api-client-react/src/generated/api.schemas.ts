@@ -142,18 +142,6 @@ export interface BusinessUnitUpdate {
   notes?: string;
 }
 
-export type CustomerStatus = typeof CustomerStatus[keyof typeof CustomerStatus];
-
-
-export const CustomerStatus = {
-  Lead: 'Lead',
-  Prospect: 'Prospect',
-  Negotiation: 'Negotiation',
-  Customer: 'Customer',
-  Repeat_Customer: 'Repeat Customer',
-  VIP: 'VIP',
-} as const;
-
 export interface Customer {
   id: number;
   customerId: string;
@@ -188,7 +176,7 @@ export interface Customer {
   website?: string | null;
   /** @nullable */
   notes?: string | null;
-  status: CustomerStatus;
+  status: string;
   /** @nullable */
   lastContact?: string | null;
   /** @nullable */
@@ -219,18 +207,6 @@ export interface CustomerStats {
   byStatus: CustomerStatsByStatusItem[];
 }
 
-export type CustomerInputStatus = typeof CustomerInputStatus[keyof typeof CustomerInputStatus];
-
-
-export const CustomerInputStatus = {
-  Lead: 'Lead',
-  Prospect: 'Prospect',
-  Negotiation: 'Negotiation',
-  Customer: 'Customer',
-  Repeat_Customer: 'Repeat Customer',
-  VIP: 'VIP',
-} as const;
-
 export interface CustomerInput {
   fullName: string;
   businessName?: string;
@@ -247,24 +223,12 @@ export interface CustomerInput {
   instagram?: string;
   website?: string;
   notes?: string;
-  status: CustomerInputStatus;
+  status: string;
   lastContact?: string;
   nextFollowUp?: string;
   assignedStaff?: string;
   tags?: string;
 }
-
-export type CustomerUpdateStatus = typeof CustomerUpdateStatus[keyof typeof CustomerUpdateStatus];
-
-
-export const CustomerUpdateStatus = {
-  Lead: 'Lead',
-  Prospect: 'Prospect',
-  Negotiation: 'Negotiation',
-  Customer: 'Customer',
-  Repeat_Customer: 'Repeat Customer',
-  VIP: 'VIP',
-} as const;
 
 export interface CustomerUpdate {
   fullName?: string;
@@ -282,7 +246,7 @@ export interface CustomerUpdate {
   instagram?: string;
   website?: string;
   notes?: string;
-  status?: CustomerUpdateStatus;
+  status?: string;
   lastContact?: string;
   nextFollowUp?: string;
   assignedStaff?: string;

@@ -5,13 +5,12 @@ import path from "path";
 import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { mockupPreviewPlugin } from "./mockupPreviewPlugin";
 
-const rawPort = process.env.PORT;
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
+// Replit injects PORT and BASE_PATH; everywhere else falls back to defaults so
+// `pnpm run build` works without them. Throwing here failed the entire
+// workspace build, because this package is built alongside the app. Mirrors the
+// defaults in artifacts/sed-command-center/vite.config.ts; 5174 keeps this
+// clear of the main app on 5173.
+const rawPort = process.env.PORT ?? "5174";
 
 const port = Number(rawPort);
 
@@ -19,13 +18,7 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const basePath = process.env.BASE_PATH;
-
-if (!basePath) {
-  throw new Error(
-    "BASE_PATH environment variable is required but was not provided.",
-  );
-}
+const basePath = process.env.BASE_PATH ?? "/";
 
 export default defineConfig({
   base: basePath,
