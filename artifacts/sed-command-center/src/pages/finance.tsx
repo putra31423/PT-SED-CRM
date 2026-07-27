@@ -28,6 +28,8 @@ import { formatIDR } from "@/lib/utils";
 import { parseCSV, buildImportRows, type ImportRow } from "@/lib/finance-import";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
+import { Spinner } from "@/components/ui/spinner";
 import { Plus, Search, Calendar as CalendarIcon, Download, Upload, FileSpreadsheet, ChevronDown, TrendingUp, TrendingDown, Wallet, ArrowDownRight, ArrowUpRight, UserPlus, Building2, X, ArrowLeft, ArrowUpDown, ArrowUp, ArrowDown, Check, ChevronsUpDown, AlertTriangle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -230,88 +232,140 @@ function ImportDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Input
-              type="file"
-              accept=".csv,text/csv"
-              disabled={importing}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onPickFile(f);
-                // Reset so picking the same file twice still fires onChange.
-                e.target.value = "";
-              }}
-              className="h-11"
-            />
-            <Button variant="outline" onClick={onDownloadTemplate} disabled={importing} className="shrink-0">
-              <Download className="w-4 h-4 mr-2" />
-              Template
-            </Button>
+        <div className="space-y-5 py-1">
+          {/* Step 1 — pick a file */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Pilih berkas CSV</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="file"
+                accept=".csv,text/csv"
+                disabled={importing}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) onPickFile(f);
+                  // Reset so picking the same file twice still fires onChange.
+                  e.target.value = "";
+                }}
+                className="h-11 cursor-pointer file:mr-3 file:cursor-pointer file:rounded file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium"
+              />
+              <Button
+                variant="outline"
+                onClick={onDownloadTemplate}
+                disabled={importing}
+                className="h-11 shrink-0 transition-transform active:scale-95"
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Template
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Belum punya formatnya? Klik <span className="font-medium text-foreground">Template</span> untuk
+              mengunduh contoh kolom yang benar.
+            </p>
           </div>
 
           {fileName && !problem && (
-            <p className="text-xs text-muted-foreground">Berkas: {fileName}</p>
+            <div className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm animate-in fade-in slide-in-from-top-1 duration-200">
+              <FileSpreadsheet className="h-4 w-4 shrink-0 text-green-600" />
+              <span className="truncate font-medium">{fileName}</span>
+            </div>
           )}
 
           {problem && (
-            <div className="flex gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm">
-              <AlertTriangle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
-              <p>{problem}</p>
+            <div className="flex gap-2.5 rounded-md border border-destructive/30 bg-destructive/5 p-3 animate-in fade-in slide-in-from-top-1 duration-200">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              <p className="text-sm leading-relaxed">{problem}</p>
             </div>
           )}
 
           {rows && (
-            <div className="space-y-3">
-              <div className="flex gap-4 text-sm">
-                <span className="font-medium text-green-600">{valid.length} baris siap diimpor</span>
-                {invalid.length > 0 && (
-                  <span className="font-medium text-destructive">{invalid.length} baris bermasalah</span>
-                )}
+            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+              <Separator />
+
+              {/* Tally — the two numbers the user actually decides on */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-md border bg-green-500/5 px-3 py-2.5">
+                  <p className="text-2xl font-semibold tabular-nums text-green-600">{valid.length}</p>
+                  <p className="text-xs text-muted-foreground">baris siap diimpor</p>
+                </div>
+                <div className={cn("rounded-md border px-3 py-2.5", invalid.length > 0 && "bg-destructive/5")}>
+                  <p className={cn("text-2xl font-semibold tabular-nums", invalid.length > 0 ? "text-destructive" : "text-muted-foreground")}>
+                    {invalid.length}
+                  </p>
+                  <p className="text-xs text-muted-foreground">baris bermasalah</p>
+                </div>
               </div>
 
               {invalid.length > 0 && (
-                <div className="max-h-52 overflow-y-auto rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-20">Baris</TableHead>
-                        <TableHead>Masalah</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {invalid.map((r) => (
-                        <TableRow key={r.line}>
-                          <TableCell className="font-mono text-xs">{r.line}</TableCell>
-                          <TableCell className="text-xs text-destructive">{r.errors.join("; ")}</TableCell>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Baris bermasalah <span className="font-medium text-foreground">dilewati</span>, tidak
+                    menggagalkan yang lain. Nomor baris di bawah sama dengan nomor baris di Excel.
+                  </p>
+                  <div className="max-h-48 overflow-y-auto rounded-md border">
+                    <Table>
+                      <TableHeader className="sticky top-0 bg-muted/95 backdrop-blur">
+                        <TableRow>
+                          <TableHead className="h-9 w-16 text-xs">Baris</TableHead>
+                          <TableHead className="h-9 text-xs">Masalah</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {invalid.map((r) => (
+                          <TableRow key={r.line}>
+                            <TableCell className="py-2 font-mono text-xs tabular-nums text-muted-foreground">
+                              {r.line}
+                            </TableCell>
+                            <TableCell className="py-2 text-xs leading-relaxed text-destructive">
+                              {r.errors.join(" · ")}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               )}
 
-              {invalid.length > 0 && valid.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Baris bermasalah akan dilewati. Perbaiki lalu import ulang kalau perlu.
-                </p>
-              )}
-
               {importing && (
-                <p className="text-sm text-muted-foreground">
-                  Mengimpor… {progress} dari {valid.length}
-                </p>
+                <div className="space-y-1.5 animate-in fade-in duration-200">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Mengimpor…</span>
+                    <span className="font-medium tabular-nums">{progress} / {valid.length}</span>
+                  </div>
+                  <Progress value={valid.length ? (progress / valid.length) * 100 : 0} className="h-1.5" />
+                </div>
               )}
             </div>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={importing}>
+        <DialogFooter className="gap-2 sm:gap-2">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={importing}
+            className="transition-transform active:scale-95"
+          >
             Batal
           </Button>
-          <Button onClick={onConfirm} disabled={importing || valid.length === 0}>
-            {importing ? "Mengimpor…" : `Import ${valid.length} baris`}
+          <Button
+            onClick={onConfirm}
+            disabled={importing || valid.length === 0}
+            className="min-w-[9.5rem] transition-transform active:scale-95"
+          >
+            {importing ? (
+              <>
+                <Spinner className="mr-2" />
+                Mengimpor…
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                Import {valid.length > 0 ? `${valid.length} baris` : ""}
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -575,8 +629,12 @@ export default function FinanceHub() {
 
           {/* Only the two data tabs can receive rows; P&L and cashflow are derived. */}
           {(tab === "income" || tab === "expenses") && (
-            <Button variant="outline" onClick={() => { resetImport(); setImportOpen(true); }}>
-              <Upload className="w-4 h-4 mr-2" />
+            <Button
+              variant="outline"
+              onClick={() => { resetImport(); setImportOpen(true); }}
+              className="group transition-transform active:scale-95"
+            >
+              <Upload className="w-4 h-4 mr-2 transition-transform group-hover:-translate-y-0.5" />
               Import
             </Button>
           )}
