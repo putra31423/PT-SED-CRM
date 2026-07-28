@@ -9,6 +9,7 @@ import { setAuthTokenGetter } from '@workspace/api-client-react';
 import { AppLayout } from '@/components/layout';
 import { AuthGuard } from '@/components/auth-guard';
 import { getAccessToken } from '@/lib/supabase';
+import { shouldRetryApiError } from '@/lib/api-error';
 
 import Login from '@/pages/login';
 import Dashboard from '@/pages/dashboard';
@@ -21,7 +22,15 @@ import FinanceHub from '@/pages/finance';
 import Reports from '@/pages/reports';
 import Settings from '@/pages/settings';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) =>
+        failureCount < 2 && shouldRetryApiError(error),
+    },
+    mutations: { retry: false },
+  },
+});
 
 // Registered once at module load, before any query can run. The generated API
 // client calls this before every request and attaches the result as a bearer

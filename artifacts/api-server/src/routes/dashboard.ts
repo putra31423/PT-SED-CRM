@@ -1,33 +1,18 @@
 import { Router } from "express";
 import { db, eq, sql, and, gte, lte } from "@workspace/db";
-import { incomeTable, expensesTable, customersTable, businessUnitsTable, dealsTable } from "@workspace/db";
+import { incomeTable, expensesTable, customersTable, businessUnitsTable } from "@workspace/db";
+import { getBoundedPeriodDates, getBusinessToday, getBusinessYear } from "../lib/period";
+import { handleRouteError } from "../lib/route-error";
 
 const router = Router();
-
-function getPeriodDates(period?: string): { startDate: string; endDate: string } {
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  switch (period) {
-    case "today": return { startDate: fmt(now), endDate: fmt(now) };
-    case "yesterday": { const y = new Date(now); y.setDate(y.getDate() - 1); return { startDate: fmt(y), endDate: fmt(y) }; }
-    case "this_week": { const s = new Date(now); s.setDate(s.getDate() - s.getDay()); return { startDate: fmt(s), endDate: fmt(now) }; }
-    case "this_month": return { startDate: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`, endDate: fmt(now) };
-    case "last_month": { const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1); const le = new Date(now.getFullYear(), now.getMonth(), 0); return { startDate: fmt(lm), endDate: fmt(le) }; }
-    case "quarter": { const qs = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1); return { startDate: fmt(qs), endDate: fmt(now) }; }
-    case "year": return { startDate: `${now.getFullYear()}-01-01`, endDate: fmt(now) };
-    default: return { startDate: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`, endDate: fmt(now) };
-  }
-}
 
 // GET /dashboard/summary
 router.get("/dashboard/summary", async (req, res) => {
   try {
     const { period = "this_month", businessUnitId } = req.query;
-    const { startDate, endDate } = getPeriodDates(period as string);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const now = new Date();
-    const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const { startDate, endDate } = getBoundedPeriodDates(period as string);
+    const today = getBusinessToday();
+    const currentYear = getBusinessYear();
 
     const buildConds = (table: any, dateField: any) => {
       const c: any[] = [gte(dateField, startDate), lte(dateField, endDate)];
@@ -51,7 +36,7 @@ router.get("/dashboard/summary", async (req, res) => {
       total: sql<number>`coalesce(sum(${incomeTable.amount}::numeric), 0)`,
     }).from(incomeTable).where(and(gte(incomeTable.date, today), lte(incomeTable.date, today)));
 
-    const yearConds: any[] = [gte(incomeTable.date, `${now.getFullYear()}-01-01`)];
+    const yearConds: any[] = [gte(incomeTable.date, `${currentYear}-01-01`)];
     const [yearInc] = await db.select({ total: sql<number>`coalesce(sum(${incomeTable.amount}::numeric), 0)` }).from(incomeTable).where(and(...yearConds));
 
     const [custAgg] = await db.select({ count: sql<number>`count(*)` }).from(customersTable);
@@ -76,15 +61,14 @@ router.get("/dashboard/summary", async (req, res) => {
       expenseGrowth: 7.2,
     });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
 // GET /dashboard/revenue-chart
 router.get("/dashboard/revenue-chart", async (req, res) => {
   try {
-    const { year = new Date().getFullYear(), businessUnitId } = req.query;
+    const { year = getBusinessYear(), businessUnitId } = req.query;
     const yearNum = parseInt(year as string);
 
     const incConds: any[] = [gte(incomeTable.date, `${yearNum}-01-01`), lte(incomeTable.date, `${yearNum}-12-31`)];
@@ -119,8 +103,7 @@ router.get("/dashboard/revenue-chart", async (req, res) => {
 
     res.json(data);
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -128,7 +111,7 @@ router.get("/dashboard/revenue-chart", async (req, res) => {
 router.get("/dashboard/top-business-units", async (req, res) => {
   try {
     const { period = "this_month", limit = "5" } = req.query;
-    const { startDate, endDate } = getPeriodDates(period as string);
+    const { startDate, endDate } = getBoundedPeriodDates(period as string);
     const limitNum = parseInt(limit as string);
 
     const units = await db.select().from(businessUnitsTable);
@@ -145,8 +128,7 @@ router.get("/dashboard/top-business-units", async (req, res) => {
     stats.sort((a, b) => b.revenue - a.revenue);
     res.json(stats.slice(0, limitNum));
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -170,8 +152,7 @@ router.get("/dashboard/cashflow", async (req, res) => {
       forecastNext30Days: (inflow - outflow) * 0.3,
     });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 

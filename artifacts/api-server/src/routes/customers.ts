@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { db, eq, sql, and, ilike, or } from "@workspace/db";
 import { customersTable, businessUnitsTable, dealsTable, incomeTable } from "@workspace/db";
+import { CreateCustomerBody } from "@workspace/api-zod";
+import { handleRouteError } from "../lib/route-error";
 
 const router = Router();
 
@@ -52,30 +54,53 @@ router.get("/customers", async (req, res) => {
 
     res.json({ data, total: Number(totalRow?.count ?? 0), page: pageNum, limit: limitNum });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
 // POST /customers
 router.post("/customers", async (req, res) => {
   try {
-    const body = req.body;
-    // Use MAX of existing customer_id numbers to avoid collision when rows have been deleted
-    const [maxRow] = await db
-      .select({ maxId: sql<string>`max(customer_id)` })
-      .from(customersTable);
-    const lastNum = maxRow?.maxId ? parseInt(maxRow.maxId.replace("CUS-", ""), 10) : 0;
-    const nextNum = isNaN(lastNum) ? 1 : lastNum + 1;
-    const customerId = `CUS-${String(nextNum).padStart(4, "0")}`;
-    const [customer] = await db
-      .insert(customersTable)
-      .values({ ...body, customerId })
-      .returning();
+    const parsed = CreateCustomerBody.safeParse(req.body);
+    if (!parsed.success || !parsed.data.fullName.trim()) {
+      res.status(400).json({
+        error: "Invalid customer data",
+        code: "VALIDATION_ERROR",
+        details: parsed.success
+          ? [{ path: ["fullName"], message: "Full name is required" }]
+          : parsed.error.issues.map(({ path, message }) => ({ path, message })),
+      });
+      return;
+    }
+
+    const body = {
+      ...parsed.data,
+      fullName: parsed.data.fullName.trim(),
+      lastContact: parsed.data.lastContact?.toISOString().slice(0, 10),
+      nextFollowUp: parsed.data.nextFollowUp?.toISOString().slice(0, 10),
+    };
+
+    // The advisory transaction lock makes human-readable ID generation safe
+    // when two serverless instances insert at the same time.
+    const customer = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('customers_customer_id'))`);
+      const [maxRow] = await tx
+        .select({
+          maxId: sql<number>`coalesce(max(substring(${customersTable.customerId} from '([0-9]+)$')::integer), 0)`,
+        })
+        .from(customersTable);
+      const nextNum = Number(maxRow?.maxId ?? 0) + 1;
+      const customerId = `CUS-${String(nextNum).padStart(4, "0")}`;
+      const [created] = await tx
+        .insert(customersTable)
+        .values({ ...body, customerId })
+        .returning();
+      return created;
+    });
+
     res.status(201).json(customer);
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -95,8 +120,7 @@ router.get("/customers/stats/summary", async (req, res) => {
       byStatus: byStatus.rows.map((r) => ({ status: r.status, count: Number(r.count) })),
     });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -115,8 +139,7 @@ router.get("/customers/:id", async (req, res) => {
     }
     res.json({ ...row.customer, businessUnitName: row.businessUnitName ?? null });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -135,8 +158,7 @@ router.patch("/customers/:id", async (req, res) => {
     }
     res.json(customer);
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -144,18 +166,19 @@ router.patch("/customers/:id", async (req, res) => {
 router.delete("/customers/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    // Null out FK references to avoid constraint violations
-    await db.update(dealsTable).set({ customerId: null }).where(eq(dealsTable.customerId, id));
-    await db.update(incomeTable).set({ customerId: null }).where(eq(incomeTable.customerId, id));
-    const [deleted] = await db.delete(customersTable).where(eq(customersTable.id, id)).returning();
+    const deleted = await db.transaction(async (tx) => {
+      await tx.update(dealsTable).set({ customerId: null }).where(eq(dealsTable.customerId, id));
+      await tx.update(incomeTable).set({ customerId: null }).where(eq(incomeTable.customerId, id));
+      const [row] = await tx.delete(customersTable).where(eq(customersTable.id, id)).returning();
+      return row;
+    });
     if (!deleted) {
       res.status(404).json({ error: "Not found" });
       return;
     }
     res.status(204).end();
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 

@@ -2,7 +2,11 @@
   "name": "workspace",
   "version": "0.0.0",
   "license": "MIT",
-  "//type": "Required. The Vercel function is emitted as api/[...path].js — .js because Vercel only treats that extension as a catch-all route — and its bundled output is ESM, so the package must declare it. Safe now that the function is a single self-contained file: the earlier breakage came from unbundled imports, not from this field.",
+  "packageManager": "pnpm@10.30.3",
+  "engines": {
+    "node": "24.x"
+  },
+  "//type": "The bundled Vercel function is ESM, so the root package declares module semantics.",
   "type": "module",
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",

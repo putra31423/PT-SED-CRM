@@ -25,12 +25,32 @@ import {
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
+import { QueryErrorAlert } from "@/components/query-error-alert";
 
 export default function Dashboard() {
-  const { data: summary, isLoading: isLoadingSummary } = useGetDashboardSummary();
-  const { data: chartData, isLoading: isLoadingChart } = useGetDashboardRevenueChart();
-  const { data: topBU, isLoading: isLoadingTop } = useGetTopBusinessUnits();
-  const { data: cashflow, isLoading: isLoadingCashflow } = useGetDashboardCashflow();
+  const summaryQuery = useGetDashboardSummary();
+  const chartQuery = useGetDashboardRevenueChart();
+  const topBusinessUnitsQuery = useGetTopBusinessUnits();
+  const cashflowQuery = useGetDashboardCashflow();
+
+  const { data: summary, isLoading: isLoadingSummary } = summaryQuery;
+  const { data: chartData, isLoading: isLoadingChart } = chartQuery;
+  const { data: topBU, isLoading: isLoadingTop } = topBusinessUnitsQuery;
+  const { data: cashflow, isLoading: isLoadingCashflow } = cashflowQuery;
+  const dashboardError =
+    summaryQuery.error ??
+    chartQuery.error ??
+    topBusinessUnitsQuery.error ??
+    cashflowQuery.error;
+
+  function retryDashboard() {
+    void Promise.all([
+      summaryQuery.refetch(),
+      chartQuery.refetch(),
+      topBusinessUnitsQuery.refetch(),
+      cashflowQuery.refetch(),
+    ]);
+  }
 
   const renderKpiCard = (
     title: string,
@@ -84,6 +104,14 @@ export default function Dashboard() {
           <p className="text-muted-foreground">Monitor your holding company's performance metrics.</p>
         </div>
       </div>
+
+      {dashboardError && (
+        <QueryErrorAlert
+          error={dashboardError}
+          onRetry={retryDashboard}
+          title="Sebagian data dashboard gagal dimuat"
+        />
+      )}
 
       {isLoadingSummary ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

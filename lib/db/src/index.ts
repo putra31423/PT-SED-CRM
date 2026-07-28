@@ -1,24 +1,45 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { attachDatabasePool } from "@vercel/functions";
 import pg from "pg";
 import * as schema from "./schema";
 
 const { Pool } = pg;
 
 let instance: NodePgDatabase<typeof schema> | null = null;
+let pool: InstanceType<typeof Pool> | null = null;
+
+export class DatabaseConfigurationError extends Error {
+  readonly name = "DatabaseConfigurationError";
+}
 
 function connect(): NodePgDatabase<typeof schema> {
   if (instance) return instance;
 
   const url = process.env.DATABASE_URL;
   if (!url) {
-    throw new Error(
+    throw new DatabaseConfigurationError(
       "DATABASE_URL is not set. On Vercel add it under Settings → " +
         "Environment Variables, using Supabase's Transaction pooler (port 6543).",
     );
   }
 
-  instance = drizzle(new Pool({ connectionString: url }), { schema });
+  pool = new Pool({
+    connectionString: url,
+    max: 5,
+    idleTimeoutMillis: 5_000,
+    connectionTimeoutMillis: 10_000,
+    allowExitOnIdle: true,
+  });
+
+  // Vercel drains idle clients before freezing a function instance. Without
+  // this lifecycle hook, warm instances can retain pooler slots until their
+  // process is eventually recycled.
+  if (process.env.VERCEL) {
+    attachDatabasePool(pool);
+  }
+
+  instance = drizzle(pool, { schema });
   return instance;
 }
 
@@ -56,4 +77,20 @@ export * from "./schema";
  * Routing every consumer through this package guarantees a single instance.
  * Add operators here as they are needed rather than reaching past this module.
  */
-export { and, asc, desc, eq, gte, ilike, inArray, isNotNull, isNull, like, lte, ne, not, or, sql } from "drizzle-orm";
+export {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  like,
+  lte,
+  ne,
+  not,
+  or,
+  sql,
+} from "drizzle-orm";

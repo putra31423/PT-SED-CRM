@@ -1,13 +1,12 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/sed-command-center run build",
+  "buildCommand": "pnpm run typecheck && pnpm --filter @workspace/api-server run build && pnpm --filter @workspace/sed-command-center run build",
   "outputDirectory": "artifacts/sed-command-center/dist/public",
-  "installCommand": "pnpm install --frozen-lockfile",
+  "installCommand": "npx -y pnpm@10.30.3 install --frozen-lockfile",
   "framework": null,
+  "regions": ["sin1"],
   "rewrites": [
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
-    }
+    { "source": "/api/(.*)", "destination": "/api/index?__p=/$1" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

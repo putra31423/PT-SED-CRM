@@ -33,6 +33,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Building2, Search, Globe, ChevronRight, Pencil, Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { QueryErrorAlert } from "@/components/query-error-alert";
+import { formatApiError } from "@/lib/api-error";
 
 const CATEGORIES = ["Media", "Digital", "Tourism", "Luxury", "Travel Support", "Lifestyle", "Service", "Retail"] as const;
 type Category = typeof CATEGORIES[number];
@@ -69,7 +71,8 @@ export default function BusinessUnits() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const { data: units, isLoading } = useListBusinessUnits();
+  const unitsQuery = useListBusinessUnits();
+  const { data: units, isLoading, error: unitsError } = unitsQuery;
   const createMutation = useCreateBusinessUnit();
   const updateMutation = useUpdateBusinessUnit();
   const queryClient = useQueryClient();
@@ -155,8 +158,8 @@ export default function BusinessUnits() {
         setAddOpen(false);
       }
       queryClient.invalidateQueries({ queryKey: getListBusinessUnitsQueryKey() });
-    } catch {
-      toast({ title: "Gagal menyimpan", description: "Terjadi kesalahan, coba lagi.", variant: "destructive" });
+    } catch (error) {
+      toast({ title: "Gagal menyimpan", description: formatApiError(error), variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -174,8 +177,8 @@ export default function BusinessUnits() {
       toast({ title: "Business unit dihapus" });
       queryClient.invalidateQueries({ queryKey: getListBusinessUnitsQueryKey() });
       setDeleteUnit(null);
-    } catch {
-      toast({ title: "Gagal menghapus", variant: "destructive" });
+    } catch (error) {
+      toast({ title: "Gagal menghapus", description: formatApiError(error), variant: "destructive" });
     } finally {
       setDeleting(false);
     }
@@ -287,6 +290,14 @@ export default function BusinessUnits() {
           Add Business Unit
         </Button>
       </div>
+
+      {unitsError && (
+        <QueryErrorAlert
+          error={unitsError}
+          onRetry={() => void unitsQuery.refetch()}
+          title="Business unit gagal dimuat"
+        />
+      )}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4 items-center bg-card p-4 rounded-xl border shadow-sm">

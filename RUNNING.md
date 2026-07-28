@@ -3,7 +3,7 @@
 ## Yang dibutuhkan
 
 - Node.js 24 (`node -v`)
-- pnpm 11 (`pnpm -v`, atau `npm i -g pnpm`)
+- pnpm 10.30.3 (`corepack enable && corepack prepare pnpm@10.30.3 --activate`)
 - Akses ke database Supabase project ini
 
 ## Setup pertama kali
@@ -52,15 +52,15 @@ application router seperti punya Replit yang menyatukan keduanya di satu port:
 
 | Proses   | Perintah                                              | URL                     |
 | -------- | ----------------------------------------------------- | ----------------------- |
-| API      | `pnpm --filter @workspace/api-server run dev`          | <http://localhost:5001> |
-| Frontend | `pnpm --filter @workspace/sed-command-center run dev`  | <http://localhost:5173> |
+| API      | `pnpm --filter @workspace/api-server run dev`         | <http://localhost:5001> |
+| Frontend | `pnpm --filter @workspace/sed-command-center run dev` | <http://localhost:5173> |
 
 Dev server Vite mem-proxy `/api/*` ke API, jadi frontend tetap memanggil path
 relatif persis seperti di Replit — tidak ada kode frontend yang perlu diubah.
 
 ### Lewat VS Code
 
-`Terminal → Run Task…` (atau `Cmd+Shift+P` → *Tasks: Run Task*):
+`Terminal → Run Task…` (atau `Cmd+Shift+P` → _Tasks: Run Task_):
 
 - **Dev: all** — jalankan API + frontend sekaligus
 - **DB: push schema** — sinkronkan skema ke database
@@ -68,7 +68,7 @@ relatif persis seperti di Replit — tidak ada kode frontend yang perlu diubah.
 
 Untuk debugging dengan breakpoint: tab **Run and Debug** → **Debug API server**.
 
-## Pindah ke database sungguhan (Supabase / Neon)
+## Mengganti koneksi database
 
 Cukup ganti satu baris di `.env`:
 
@@ -76,20 +76,17 @@ Cukup ganti satu baris di `.env`:
 DATABASE_URL=postgresql://...
 ```
 
-Kode memilih driver otomatis berdasarkan skema URL-nya
-(lihat [lib/db/src/index.ts](lib/db/src/index.ts)) — tidak ada perubahan kode
-lain yang diperlukan. Setelah ganti, jalankan `pnpm --filter @workspace/db run push`
-sekali untuk membuat tabel di database baru.
+API memakai PostgreSQL melalui `pg`/Drizzle (lihat `lib/db/src/index.ts`). Setelah
+beralih ke database baru, jalankan migrasi sebelum membuka aplikasi.
 
 ## Catatan penting
 
 - **Port 5000 tidak dipakai di macOS.** AirPlay Receiver (proses `ControlCenter`)
   sudah menguasainya dan akan membalas HTTP 403 yang membingungkan. Kita pakai 5001.
-- **API server tidak punya autentikasi.** `app.use("/api", router)` terbuka penuh
-  dengan `cors()` tanpa batasan origin.
-- **Halaman login masih dummy.** `src/pages/login.tsx` hanya menulis
-  `localStorage.sed_user`; input apa pun diterima. Keduanya harus dibereskan
-  sebelum deploy ke publik.
+- **API memakai Supabase Auth.** User harus memiliki
+  `app_metadata.crm_access=true`; lihat `AUTH.md` untuk menambah staff.
+- **CORS default same-origin.** Isi `CORS_ORIGIN` hanya bila frontend berjalan
+  pada origin yang berbeda dari API.
 - **Database awalnya kosong** — tabel terbentuk tapi belum ada isi.
 - **Ubah skema database** lewat file di `lib/db/src/schema/`, lalu jalankan ulang
   `pnpm --filter @workspace/db run push`.

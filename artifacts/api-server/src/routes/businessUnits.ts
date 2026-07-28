@@ -6,6 +6,8 @@ import {
   expensesTable,
   customersTable,
 } from "@workspace/db";
+import { CreateBusinessUnitBody } from "@workspace/api-zod";
+import { handleRouteError } from "../lib/route-error";
 
 const router = Router();
 
@@ -24,20 +26,45 @@ router.get("/business-units", async (req, res) => {
       .orderBy(businessUnitsTable.name);
     res.json(units);
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
 // POST /business-units
 router.post("/business-units", async (req, res) => {
   try {
-    const body = req.body;
+    const parsed = CreateBusinessUnitBody.safeParse(req.body);
+    if (!parsed.success || !parsed.data.name.trim()) {
+      res.status(400).json({
+        error: "Invalid business unit data",
+        code: "VALIDATION_ERROR",
+        details: parsed.success
+          ? [{ path: ["name"], message: "Name is required" }]
+          : parsed.error.issues.map(({ path, message }) => ({ path, message })),
+      });
+      return;
+    }
+
+    const body = parsed.data;
+    const name = body.name.trim();
+    const slug = (body.slug || name)
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9-]/g, "")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+
+    if (!slug) {
+      res.status(400).json({ error: "Slug is required", code: "VALIDATION_ERROR" });
+      return;
+    }
+
     const [unit] = await db
       .insert(businessUnitsTable)
       .values({
-        name: body.name,
-        slug: body.slug || body.name.toLowerCase().replace(/\s+/g, "-"),
+        name,
+        slug,
         category: body.category,
         website: body.website || null,
         logoUrl: body.logoUrl || null,
@@ -48,8 +75,7 @@ router.post("/business-units", async (req, res) => {
       .returning();
     res.status(201).json(unit);
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -101,8 +127,7 @@ router.get("/business-units/:id", async (req, res) => {
       totalStaff: 0,
     });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -122,8 +147,7 @@ router.patch("/business-units/:id", async (req, res) => {
     }
     res.json(unit);
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -141,8 +165,7 @@ router.delete("/business-units/:id", async (req, res) => {
     }
     res.json({ success: true });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 

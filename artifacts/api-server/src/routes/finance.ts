@@ -1,25 +1,10 @@
 import { Router } from "express";
 import { db, eq, sql, and, gte, lte, desc } from "@workspace/db";
 import { incomeTable, expensesTable, businessUnitsTable, customersTable } from "@workspace/db";
+import { getPeriodDates } from "../lib/period";
+import { handleRouteError } from "../lib/route-error";
 
 const router = Router();
-
-function getPeriodDates(period?: string): { startDate?: string; endDate?: string } {
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-  switch (period) {
-    case "today": return { startDate: fmt(now), endDate: fmt(now) };
-    case "yesterday": { const y = new Date(now); y.setDate(y.getDate() - 1); return { startDate: fmt(y), endDate: fmt(y) }; }
-    case "this_week": { const s = new Date(now); s.setDate(s.getDate() - s.getDay()); return { startDate: fmt(s), endDate: fmt(now) }; }
-    case "this_month": return { startDate: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`, endDate: fmt(now) };
-    case "last_month": { const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1); const le = new Date(now.getFullYear(), now.getMonth(), 0); return { startDate: fmt(lm), endDate: fmt(le) }; }
-    case "quarter": { const qs = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1); return { startDate: fmt(qs), endDate: fmt(now) }; }
-    case "year": return { startDate: `${now.getFullYear()}-01-01`, endDate: fmt(now) };
-    default: return {};
-  }
-}
 
 // ── INCOME ────────────────────────────────────────────────────────────────────
 
@@ -52,8 +37,7 @@ router.get("/finance/income", async (req, res) => {
       totalAmount: Number(totalRow?.totalAmount ?? 0),
     });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -62,8 +46,7 @@ router.post("/finance/income", async (req, res) => {
     const [inc] = await db.insert(incomeTable).values(req.body).returning();
     res.status(201).json({ ...inc, amount: Number(inc.amount), tax: Number(inc.tax) });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -76,8 +59,7 @@ router.get("/finance/income/:id", async (req, res) => {
     }
     res.json({ ...inc, amount: Number(inc.amount), tax: Number(inc.tax) });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -90,8 +72,7 @@ router.patch("/finance/income/:id", async (req, res) => {
     }
     res.json({ ...inc, amount: Number(inc.amount), tax: Number(inc.tax) });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -104,8 +85,7 @@ router.delete("/finance/income/:id", async (req, res) => {
     }
     res.status(204).end();
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -137,8 +117,7 @@ router.get("/finance/expenses", async (req, res) => {
       totalAmount: Number(totalRow?.totalAmount ?? 0),
     });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -147,8 +126,7 @@ router.post("/finance/expenses", async (req, res) => {
     const [exp] = await db.insert(expensesTable).values(req.body).returning();
     res.status(201).json({ ...exp, amount: Number(exp.amount), tax: Number(exp.tax) });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -161,8 +139,7 @@ router.get("/finance/expenses/:id", async (req, res) => {
     }
     res.json({ ...exp, amount: Number(exp.amount), tax: Number(exp.tax) });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -175,8 +152,7 @@ router.patch("/finance/expenses/:id", async (req, res) => {
     }
     res.json({ ...exp, amount: Number(exp.amount), tax: Number(exp.tax) });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -189,8 +165,7 @@ router.delete("/finance/expenses/:id", async (req, res) => {
     }
     res.status(204).end();
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -244,8 +219,7 @@ router.get("/finance/profit-loss", async (req, res) => {
 
     res.json({ period: period || "this_month", revenue, expenses, grossProfit, netProfit, margin, tax, growth: 15.3, breakdown });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -305,8 +279,7 @@ router.get("/finance/cashflow-detail", async (req, res) => {
       series,
     });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 

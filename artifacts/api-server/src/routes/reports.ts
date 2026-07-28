@@ -1,27 +1,10 @@
 import { Router } from "express";
 import { db, eq, sql, and, gte, lte } from "@workspace/db";
 import { incomeTable, expensesTable, businessUnitsTable } from "@workspace/db";
+import { getPeriodDates } from "../lib/period";
+import { handleRouteError } from "../lib/route-error";
 
 const router = Router();
-
-function getPeriodDates(period?: string): { startDate?: string; endDate?: string } {
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  switch (period) {
-    case "today": return { startDate: fmt(now), endDate: fmt(now) };
-    case "this_week": {
-      const s = new Date(now); s.setDate(s.getDate() - s.getDay());
-      return { startDate: fmt(s), endDate: fmt(now) };
-    }
-    case "this_month": return { startDate: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`, endDate: fmt(now) };
-    case "last_month": { const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1); const le = new Date(now.getFullYear(), now.getMonth(), 0); return { startDate: fmt(lm), endDate: fmt(le) }; }
-    case "quarter": { const qs = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1); return { startDate: fmt(qs), endDate: fmt(now) }; }
-    case "year": return { startDate: `${now.getFullYear()}-01-01`, endDate: fmt(now) };
-    case "all_time": return {};   // no date filter → all records
-    default: return { startDate: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`, endDate: fmt(now) };
-  }
-}
 
 // GET /reports/revenue
 router.get("/reports/revenue", async (req, res) => {
@@ -83,8 +66,7 @@ router.get("/reports/revenue", async (req, res) => {
       data,
     });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -123,8 +105,7 @@ router.get("/reports/analytics", async (req, res) => {
       yearlyGrowth: 34.7,
     });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 

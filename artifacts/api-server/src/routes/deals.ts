@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, eq, sql, and } from "@workspace/db";
 import { dealsTable, customersTable, businessUnitsTable } from "@workspace/db";
+import { handleRouteError } from "../lib/route-error";
 
 const router = Router();
 
@@ -34,8 +35,7 @@ router.get("/sales/deals", async (req, res) => {
     }));
     res.json(data);
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -46,8 +46,7 @@ router.post("/sales/deals", async (req, res) => {
     const [deal] = await db.insert(dealsTable).values({ ...body }).returning();
     res.status(201).json({ ...deal, value: Number(deal.value) });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -84,8 +83,7 @@ router.get("/sales/pipeline-summary", async (req, res) => {
       })),
     });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -105,8 +103,7 @@ router.get("/sales/deals/:id", async (req, res) => {
     }
     res.json({ ...row.deal, value: Number(row.deal.value), customerName: row.customerName ?? null, businessUnitName: row.businessUnitName ?? null });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -125,8 +122,7 @@ router.patch("/sales/deals/:id", async (req, res) => {
     }
     res.json({ ...deal, value: Number(deal.value) });
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 
@@ -141,8 +137,7 @@ router.delete("/sales/deals/:id", async (req, res) => {
     }
     res.status(204).end();
   } catch (err) {
-    req.log.error(err);
-    res.status(500).json({ error: "Internal server error" });
+    handleRouteError(req, res, err);
   }
 });
 

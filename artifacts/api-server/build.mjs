@@ -10,7 +10,48 @@ globalThis.require = createRequire(import.meta.url);
 
 const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 
+function validateDeploymentEnvironment() {
+  if (!process.env.VERCEL) return;
+
+  const required = ["DATABASE_URL", "VITE_SUPABASE_URL", "VITE_SUPABASE_PUBLISHABLE_KEY"];
+  const missing = required.filter((name) => !process.env[name]?.trim());
+  if (!process.env.SUPABASE_URL?.trim() && !process.env.VITE_SUPABASE_URL?.trim()) {
+    missing.push("SUPABASE_URL");
+  }
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing Vercel environment variables: ${[...new Set(missing)].join(", ")}. ` +
+        "Configure them for this environment and redeploy.",
+    );
+  }
+
+  const databaseUrl = new URL(process.env.DATABASE_URL);
+  if (!["postgres:", "postgresql:"].includes(databaseUrl.protocol)) {
+    throw new Error("DATABASE_URL must be a PostgreSQL connection URI.");
+  }
+  if (
+    databaseUrl.hostname.endsWith(".pooler.supabase.com") &&
+    databaseUrl.port !== "6543"
+  ) {
+    throw new Error(
+      "Vercel must use Supabase's Transaction pooler on port 6543, not the Session pooler.",
+    );
+  }
+
+  if (
+    process.env.SUPABASE_URL &&
+    new URL(process.env.SUPABASE_URL).origin !==
+      new URL(process.env.VITE_SUPABASE_URL).origin
+  ) {
+    throw new Error(
+      "SUPABASE_URL and VITE_SUPABASE_URL must point to the same project.",
+    );
+  }
+}
+
 async function buildAll() {
+  validateDeploymentEnvironment();
   const distDir = path.resolve(artifactDir, "dist");
   await rm(distDir, { recursive: true, force: true });
 
@@ -123,32 +164,31 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
 }
 
 /**
- * Bundles the same Express app into api/[...path].js for Vercel.
+ * Bundles the same Express app into api/index.js for Vercel.
  *
  * @vercel/node only strips types from the entry point; it neither compiles nor
  * bundles what that entry imports. Handing it a TypeScript import therefore
  * produced a function that died on load. Bundling here leaves a single file
  * with nothing left to resolve.
  *
- * The extension is .js, not .mjs: Vercel only recognises a catch-all route
- * from a .js file, and with .mjs it matched single-segment paths only —
- * /api/customers worked while /api/dashboard/summary returned 404. ESM is
- * declared through `type: module` in the root package.json instead. The banner
- * supplies `require` for the CommonJS dependencies that end up inside an ESM
- * bundle — pino reaches for require("tty").
+ * A plain filename, not a [...catch-all]: that convention only ever matched a
+ * single segment here, so /api/dashboard/summary never reached the app.
+ * vercel.json routes /api/* to this file explicitly instead. ESM comes from
+ * `type: module` on the root package; the banner supplies `require` for the
+ * CommonJS dependencies inside the bundle — pino reaches for require("tty").
  *
  * Written into api/ rather than dist/ because Vercel discovers functions from
  * that directory, and it runs buildCommand before collecting them.
  */
 async function buildVercelFunction() {
-  const outfile = path.resolve(artifactDir, "../../api/[...path].js");
+  const outfile = path.resolve(artifactDir, "../../api/index.js");
 
   await esbuild({
     entryPoints: [path.resolve(artifactDir, "src/vercel-handler.ts")],
     platform: "node",
     bundle: true,
     format: "esm",
-    target: "node22",
+    target: "node24",
     outfile,
     logLevel: "info",
     // The only true native binding here; everything else bundles cleanly.

@@ -29,6 +29,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { QueryErrorAlert } from "@/components/query-error-alert";
+import { formatApiError } from "@/lib/api-error";
 
 const EMPTY_FORM = {
   fullName: "",
@@ -68,11 +70,12 @@ export default function CRM() {
   const buFromUrl = qp.get("bu") ?? "";
   const buNameFromUrl = decodeURIComponent(qp.get("buName") ?? "");
 
-  const { data: customersData, isLoading } = useListCustomers({ 
+  const customersQuery = useListCustomers({
     search: search.length > 2 ? search : null,
     status: statusFilter !== "all" ? statusFilter as any : null,
     businessUnitId: buFromUrl ? parseInt(buFromUrl) : undefined,
   });
+  const { data: customersData, isLoading, error: customersError } = customersQuery;
   
   const { data: stats } = useGetCustomerStats();
 
@@ -109,8 +112,12 @@ export default function CRM() {
       toast({ title: "Customer berhasil ditambahkan ✓" });
       setForm({ ...EMPTY_FORM });
       setIsAddOpen(false);
-    } catch {
-      toast({ title: "Gagal menyimpan customer", variant: "destructive" });
+    } catch (error) {
+      toast({
+        title: "Gagal menyimpan customer",
+        description: formatApiError(error),
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
@@ -232,6 +239,14 @@ export default function CRM() {
           </SheetContent>
         </Sheet>
       </div>
+
+      {customersError && (
+        <QueryErrorAlert
+          error={customersError}
+          onRetry={() => void customersQuery.refetch()}
+          title="Daftar customer gagal dimuat"
+        />
+      )}
 
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
