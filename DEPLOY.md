@@ -63,22 +63,27 @@ environment variable ke deployment yang sudah berjalan.
 
 | | Lokal | Vercel |
 |---|---|---|
-| Database | PGlite (`DATABASE_URL=file:...`) | Supabase |
+| Database | Supabase | Supabase (sama) |
 | Pooler | Session (5432) | **Transaction (6543)** |
 | Proses API | server hidup terus | serverless per request |
 | Frontend | Vite dev server | file statis + CDN |
 
-Pemilihan driver terjadi otomatis di `lib/db/src/index.ts` berdasarkan skema URL — `file:` memakai
-PGlite, selain itu Postgres biasa. Tidak ada kode yang perlu diubah saat berpindah.
+Lokal dan produksi memakai database yang sama, jadi data yang diinput lewat localhost ikut terlihat
+di versi deploy. Yang berbeda hanya pooler-nya.
 
 ## Catatan teknis
 
-**PGlite tidak ikut ter-bundle.** `lib/db/src/index.ts` memuat PGlite lewat `import()` dinamis, bukan
-import statis. Import statis akan menyeret puluhan megabyte WebAssembly ke dalam function — cukup
-untuk menembus batas ukuran Vercel — padahal produksi tidak pernah memakainya.
+**Kenapa PGlite dicabut.** Sempat ada dukungan PGlite (Postgres WASM) supaya bisa jalan tanpa
+database sama sekali. Itu dihapus karena `drizzle-orm/pglite` mengimpor PGlite secara **statis** —
+jadi walaupun kode kita memuatnya lewat `import()` dinamis, bundler tetap mengangkatnya ke atas dan
+mengevaluasinya saat modul dimuat. Hasilnya `FUNCTION_INVOCATION_FAILED` di Vercel, bahkan pada
+`/api/healthz` yang tidak menyentuh database sama sekali.
 
-Terverifikasi lewat simulasi bundling: **0 aset `.wasm`/`.data`**, ukuran function **3,06 MB** (batas
-Vercel 250 MB).
+PGlite juga penyebab `drizzle-orm` ter-install dua kali (peer context terpisah), yang memunculkan
+error tipe "separate declarations of a private property". Satu paket, dua kegagalan build berbeda.
+
+Terverifikasi setelah dicabut: **0 file PGlite** di bundle function, function berhasil dimuat, dan
+menjawab `/api/healthz` → 200 serta `/api/customers` tanpa token → 401.
 
 **Cold start.** Request pertama setelah idle memakan sekitar 1–3 detik. Untuk CRM internal biasanya
 tidak masalah.

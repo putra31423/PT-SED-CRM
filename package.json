@@ -2,6 +2,8 @@
   "name": "workspace",
   "version": "0.0.0",
   "license": "MIT",
+  "//type": "api/[...path].ts sits at the repository root, so Vercel compiles it under this package.json. Without `type: module` it is treated as CommonJS, where the top-level await in lib/db/src/index.ts is illegal — the function then dies at import with FUNCTION_INVOCATION_FAILED before any handler runs. Every workspace package is already ESM; this makes the root agree.",
+  "type": "module",
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "dev": "pnpm --parallel --filter @workspace/api-server --filter @workspace/sed-command-center run dev",

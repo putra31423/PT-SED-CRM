@@ -24,19 +24,9 @@ if (!url) {
   throw new Error("DATABASE_URL, ensure the database is provisioned");
 }
 
-// Mirrors the driver choice in ./src/index.ts: a `file:` URL means the
-// embedded PGlite database, anything else is a real Postgres server.
-export default url.startsWith("file:")
-  ? defineConfig({
-      schema: schemaPath,
-      out: outDir,
-      dialect: "postgresql",
-      driver: "pglite",
-      dbCredentials: { url: url.replace(/^file:(\/\/)?/, "") },
-    })
-  : defineConfig({
-      schema: schemaPath,
-      out: outDir,
-      dialect: "postgresql",
-      dbCredentials: { url },
-    });
+export default defineConfig({
+  schema: schemaPath,
+  out: outDir,
+  dialect: "postgresql",
+  dbCredentials: { url },
+});

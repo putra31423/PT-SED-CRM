@@ -264,7 +264,7 @@ Project ini sebelumnya pakai `push`, yang mendiff langsung ke database tanpa jej
 perubahan skema jadi file SQL yang bisa direview dan di-rollback.
 
 > **Jangan pakai `push` lagi.** Dia akan MENGHAPUS indeks trigram, karena indeks itu tidak
-> dideklarasikan di TypeScript — PGlite (database lokal) tidak punya `pg_trgm`, jadi indeks tersebut
+> dideklarasikan di TypeScript — indeks itu butuh ekstensi `pg_trgm`, jadi
 > hidup di `lib/db/drizzle/postgres-only/001_trigram_search_indexes.sql`. `migrate` aman: dia hanya
 > menerapkan maju dan tidak pernah menghapus objek yang tidak dikenalnya.
 

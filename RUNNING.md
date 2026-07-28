@@ -4,8 +4,7 @@
 
 - Node.js 24 (`node -v`)
 - pnpm 11 (`pnpm -v`, atau `npm i -g pnpm`)
-
-Tidak perlu Docker, tidak perlu install Postgres, tidak perlu akun cloud.
+- Akses ke database Supabase project ini
 
 ## Setup pertama kali
 
@@ -21,19 +20,22 @@ Tidak perlu Docker, tidak perlu install Postgres, tidak perlu akun cloud.
    cp .env.example .env
    ```
 
-   Untuk development lokal, biarkan `DATABASE_URL` memakai `file:` — itu
-   menjalankan **PGlite**, yaitu Postgres asli yang dikompilasi ke WASM dan
-   berjalan di dalam proses API. Tidak ada server terpisah yang perlu dinyalakan.
-   Ganti path-nya menjadi path absolut ke folder repo ini.
+   Isi `DATABASE_URL` dengan connection string Supabase: **Connect → Direct →
+   Connection Method: Session pooler → Type: URI** (port **5432**). Ganti
+   `[YOUR-PASSWORD]` dengan password database, dan URL-encode karakter spesial
+   di dalamnya (`@` → `%40`, `#` → `%23`, `%` → `%25`).
 
-3. **Siapkan folder database + buat tabel**
+   Isi juga `SUPABASE_URL`, `VITE_SUPABASE_URL`, dan
+   `VITE_SUPABASE_PUBLISHABLE_KEY` — semuanya bukan rahasia.
+
+   > Port **5432** untuk lokal. Vercel memakai **6543** (Transaction pooler)
+   > karena serverless membuka koneksi baru tiap request.
+
+3. **Buat tabelnya** (hanya sekali per database baru)
 
    ```sh
-   mkdir -p .data
-   pnpm --filter @workspace/db run push
+   pnpm --filter @workspace/db run migrate
    ```
-
-   `mkdir` wajib — PGlite tidak membuat folder induk secara rekursif.
 
 ## Menjalankan
 

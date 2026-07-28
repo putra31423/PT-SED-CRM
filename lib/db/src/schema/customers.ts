@@ -50,11 +50,10 @@ export const customersTable = pgTable(
     index("customers_created_at_idx").on(t.createdAt),
     // The list endpoint also searches full_name, email, phone and business_name
     // with ILIKE '%term%', which no b-tree can serve. Those need trigram GIN
-    // indexes, but they depend on pg_trgm, which PGlite (used for local dev)
-    // does not ship. Declaring them here would make this migration fail on
-    // every developer machine, so they live in the Postgres-only script
-    // lib/db/drizzle/postgres-only/001_trigram_search_indexes.sql instead.
-    // They are performance-only — query results are identical without them.
+    // indexes, which need the pg_trgm extension. They are applied by
+    // lib/db/drizzle/postgres-only/001_trigram_search_indexes.sql rather than
+    // declared here, so this migration stays runnable against a Postgres that
+    // lacks the extension. Performance-only — results are identical without them.
   ],
 ).enableRLS();
 
