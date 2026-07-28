@@ -20,12 +20,22 @@ router.get("/business-units", async (req, res) => {
     if (category && category !== "null") {
       conditions.push(eq(businessUnitsTable.category, category as string));
     }
-    const units = await db
-      .select()
+    // count() over the joined customer id (not *) so a unit with no customers
+    // reports 0 rather than 1. One grouped query beats a request per unit.
+    const rows = await db
+      .select({
+        unit: businessUnitsTable,
+        totalCustomers: sql<number>`count(${customersTable.id})`,
+      })
       .from(businessUnitsTable)
+      .leftJoin(customersTable, eq(customersTable.businessUnitId, businessUnitsTable.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .groupBy(businessUnitsTable.id)
       .orderBy(businessUnitsTable.name);
-    res.json(units);
+
+    res.json(
+      rows.map((r) => ({ ...r.unit, totalCustomers: Number(r.totalCustomers) })),
+    );
   } catch (err) {
     handleRouteError(req, res, err);
   }

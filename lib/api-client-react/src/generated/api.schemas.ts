@@ -67,6 +67,8 @@ export interface BusinessUnit {
   description?: string | null;
   isActive: boolean;
   createdAt: string;
+  /** Number of customers assigned to this unit. Present on the list endpoint so callers can show per-unit counts without a request per unit. */
+  totalCustomers?: number;
 }
 
 export type BusinessUnitDetail = BusinessUnit & ({

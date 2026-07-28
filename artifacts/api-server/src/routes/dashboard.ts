@@ -3,6 +3,7 @@ import { db, eq, sql, and, gte, lte } from "@workspace/db";
 import { incomeTable, expensesTable, customersTable, businessUnitsTable } from "@workspace/db";
 import { getBoundedPeriodDates, getBusinessToday, getBusinessYear } from "../lib/period";
 import { handleRouteError } from "../lib/route-error";
+import { incomeIsReceived } from "../lib/income-status";
 
 const router = Router();
 
@@ -26,7 +27,7 @@ router.get("/dashboard/summary", async (req, res) => {
     const [incAgg] = await db.select({
       total: sql<number>`coalesce(sum(${incomeTable.amount}::numeric), 0)`,
       count: sql<number>`count(*)`,
-    }).from(incomeTable).where(buildConds(incomeTable, incomeTable.date));
+    }).from(incomeTable).where(and(buildConds(incomeTable, incomeTable.date), incomeIsReceived()));
 
     const [expAgg] = await db.select({
       total: sql<number>`coalesce(sum(${expensesTable.amount}::numeric), 0)`,
@@ -34,9 +35,9 @@ router.get("/dashboard/summary", async (req, res) => {
 
     const [todayInc] = await db.select({
       total: sql<number>`coalesce(sum(${incomeTable.amount}::numeric), 0)`,
-    }).from(incomeTable).where(and(gte(incomeTable.date, today), lte(incomeTable.date, today)));
+    }).from(incomeTable).where(and(gte(incomeTable.date, today), lte(incomeTable.date, today), incomeIsReceived()));
 
-    const yearConds: any[] = [gte(incomeTable.date, `${currentYear}-01-01`)];
+    const yearConds: any[] = [gte(incomeTable.date, `${currentYear}-01-01`), incomeIsReceived()];
     const [yearInc] = await db.select({ total: sql<number>`coalesce(sum(${incomeTable.amount}::numeric), 0)` }).from(incomeTable).where(and(...yearConds));
 
     const [custAgg] = await db.select({ count: sql<number>`count(*)` }).from(customersTable);
@@ -71,7 +72,7 @@ router.get("/dashboard/revenue-chart", async (req, res) => {
     const { year = getBusinessYear(), businessUnitId } = req.query;
     const yearNum = parseInt(year as string);
 
-    const incConds: any[] = [gte(incomeTable.date, `${yearNum}-01-01`), lte(incomeTable.date, `${yearNum}-12-31`)];
+    const incConds: any[] = [gte(incomeTable.date, `${yearNum}-01-01`), lte(incomeTable.date, `${yearNum}-12-31`), incomeIsReceived()];
     const expConds: any[] = [gte(expensesTable.date, `${yearNum}-01-01`), lte(expensesTable.date, `${yearNum}-12-31`)];
     if (businessUnitId && businessUnitId !== "null") {
       const buId = parseInt(businessUnitId as string);
@@ -117,7 +118,7 @@ router.get("/dashboard/top-business-units", async (req, res) => {
     const units = await db.select().from(businessUnitsTable);
     const stats = await Promise.all(
       units.map(async (u) => {
-        const [inc] = await db.select({ revenue: sql<number>`coalesce(sum(${incomeTable.amount}::numeric), 0)` }).from(incomeTable).where(and(eq(incomeTable.businessUnitId, u.id), gte(incomeTable.date, startDate), lte(incomeTable.date, endDate)));
+        const [inc] = await db.select({ revenue: sql<number>`coalesce(sum(${incomeTable.amount}::numeric), 0)` }).from(incomeTable).where(and(eq(incomeTable.businessUnitId, u.id), gte(incomeTable.date, startDate), lte(incomeTable.date, endDate), incomeIsReceived()));
         const [exp] = await db.select({ expenses: sql<number>`coalesce(sum(${expensesTable.amount}::numeric), 0)` }).from(expensesTable).where(and(eq(expensesTable.businessUnitId, u.id), gte(expensesTable.date, startDate), lte(expensesTable.date, endDate)));
         const revenue = Number(inc?.revenue ?? 0);
         const expenses = Number(exp?.expenses ?? 0);
@@ -135,7 +136,9 @@ router.get("/dashboard/top-business-units", async (req, res) => {
 // GET /dashboard/cashflow
 router.get("/dashboard/cashflow", async (req, res) => {
   try {
-    const [totalIncome] = await db.select({ sum: sql<number>`coalesce(sum(amount::numeric),0)` }).from(incomeTable);
+    // Inflow counts received money only; Pending is reported separately as
+    // outstandingInvoices, so summing everything here would count it twice.
+    const [totalIncome] = await db.select({ sum: sql<number>`coalesce(sum(amount::numeric),0)` }).from(incomeTable).where(incomeIsReceived());
     const [totalExpenses] = await db.select({ sum: sql<number>`coalesce(sum(amount::numeric),0)` }).from(expensesTable);
     const [pending] = await db.select({ sum: sql<number>`coalesce(sum(amount::numeric),0)` }).from(incomeTable).where(eq(incomeTable.status, "Pending"));
 

@@ -3,6 +3,7 @@ import { db, eq, sql, and, gte, lte } from "@workspace/db";
 import { incomeTable, expensesTable, businessUnitsTable } from "@workspace/db";
 import { getPeriodDates } from "../lib/period";
 import { handleRouteError } from "../lib/route-error";
+import { incomeIsReceived } from "../lib/income-status";
 
 const router = Router();
 
@@ -12,7 +13,7 @@ router.get("/reports/revenue", async (req, res) => {
     const { period = "this_month", businessUnitId, groupBy = "month" } = req.query;
     const { startDate, endDate } = getPeriodDates(period as string);
 
-    const incConds: any[] = [];
+    const incConds: any[] = [incomeIsReceived()];
     const expConds: any[] = [];
     if (startDate) { incConds.push(gte(incomeTable.date, startDate)); expConds.push(gte(expensesTable.date, startDate)); }
     if (endDate)   { incConds.push(lte(incomeTable.date, endDate));   expConds.push(lte(expensesTable.date, endDate)); }
@@ -79,7 +80,7 @@ router.get("/reports/analytics", async (req, res) => {
     const units = await db.select().from(businessUnitsTable);
     const stats = await Promise.all(
       units.map(async (u) => {
-        const incConds: any[] = [eq(incomeTable.businessUnitId, u.id)];
+        const incConds: any[] = [eq(incomeTable.businessUnitId, u.id), incomeIsReceived()];
         const expConds: any[] = [eq(expensesTable.businessUnitId, u.id)];
         if (startDate) { incConds.push(gte(incomeTable.date, startDate)); expConds.push(gte(expensesTable.date, startDate)); }
         if (endDate)   { incConds.push(lte(incomeTable.date, endDate));   expConds.push(lte(expensesTable.date, endDate)); }

@@ -862,6 +862,12 @@ components:
         description: { type: ["string", "null"] }
         isActive: { type: boolean }
         createdAt: { type: string, format: date-time }
+        totalCustomers:
+          type: integer
+          description: >-
+            Number of customers assigned to this unit. Present on the list
+            endpoint so callers can show per-unit counts without a request per
+            unit.
 
     BusinessUnitDetail:
       allOf:

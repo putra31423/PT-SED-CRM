@@ -53888,6 +53888,9 @@ function handleRouteError(req, res, error40) {
   }
 }
 
+// src/lib/income-status.ts
+var incomeIsReceived = () => eq(incomeTable.status, "Received");
+
 // src/routes/dashboard.ts
 var router = (0, import_express.Router)();
 router.get("/dashboard/summary", async (req, res) => {
@@ -53907,14 +53910,14 @@ router.get("/dashboard/summary", async (req, res) => {
     const [incAgg] = await db.select({
       total: sql`coalesce(sum(${incomeTable.amount}::numeric), 0)`,
       count: sql`count(*)`
-    }).from(incomeTable).where(buildConds(incomeTable, incomeTable.date));
+    }).from(incomeTable).where(and(buildConds(incomeTable, incomeTable.date), incomeIsReceived()));
     const [expAgg] = await db.select({
       total: sql`coalesce(sum(${expensesTable.amount}::numeric), 0)`
     }).from(expensesTable).where(buildConds(expensesTable, expensesTable.date));
     const [todayInc] = await db.select({
       total: sql`coalesce(sum(${incomeTable.amount}::numeric), 0)`
-    }).from(incomeTable).where(and(gte(incomeTable.date, today), lte(incomeTable.date, today)));
-    const yearConds = [gte(incomeTable.date, `${currentYear}-01-01`)];
+    }).from(incomeTable).where(and(gte(incomeTable.date, today), lte(incomeTable.date, today), incomeIsReceived()));
+    const yearConds = [gte(incomeTable.date, `${currentYear}-01-01`), incomeIsReceived()];
     const [yearInc] = await db.select({ total: sql`coalesce(sum(${incomeTable.amount}::numeric), 0)` }).from(incomeTable).where(and(...yearConds));
     const [custAgg] = await db.select({ count: sql`count(*)` }).from(customersTable);
     const revenue = Number(incAgg?.total ?? 0);
@@ -53942,7 +53945,7 @@ router.get("/dashboard/revenue-chart", async (req, res) => {
   try {
     const { year: year2 = getBusinessYear(), businessUnitId } = req.query;
     const yearNum = parseInt(year2);
-    const incConds = [gte(incomeTable.date, `${yearNum}-01-01`), lte(incomeTable.date, `${yearNum}-12-31`)];
+    const incConds = [gte(incomeTable.date, `${yearNum}-01-01`), lte(incomeTable.date, `${yearNum}-12-31`), incomeIsReceived()];
     const expConds = [gte(expensesTable.date, `${yearNum}-01-01`), lte(expensesTable.date, `${yearNum}-12-31`)];
     if (businessUnitId && businessUnitId !== "null") {
       const buId = parseInt(businessUnitId);
@@ -53977,7 +53980,7 @@ router.get("/dashboard/top-business-units", async (req, res) => {
     const units = await db.select().from(businessUnitsTable);
     const stats = await Promise.all(
       units.map(async (u) => {
-        const [inc] = await db.select({ revenue: sql`coalesce(sum(${incomeTable.amount}::numeric), 0)` }).from(incomeTable).where(and(eq(incomeTable.businessUnitId, u.id), gte(incomeTable.date, startDate), lte(incomeTable.date, endDate)));
+        const [inc] = await db.select({ revenue: sql`coalesce(sum(${incomeTable.amount}::numeric), 0)` }).from(incomeTable).where(and(eq(incomeTable.businessUnitId, u.id), gte(incomeTable.date, startDate), lte(incomeTable.date, endDate), incomeIsReceived()));
         const [exp] = await db.select({ expenses: sql`coalesce(sum(${expensesTable.amount}::numeric), 0)` }).from(expensesTable).where(and(eq(expensesTable.businessUnitId, u.id), gte(expensesTable.date, startDate), lte(expensesTable.date, endDate)));
         const revenue = Number(inc?.revenue ?? 0);
         const expenses = Number(exp?.expenses ?? 0);
@@ -53992,7 +53995,7 @@ router.get("/dashboard/top-business-units", async (req, res) => {
 });
 router.get("/dashboard/cashflow", async (req, res) => {
   try {
-    const [totalIncome] = await db.select({ sum: sql`coalesce(sum(amount::numeric),0)` }).from(incomeTable);
+    const [totalIncome] = await db.select({ sum: sql`coalesce(sum(amount::numeric),0)` }).from(incomeTable).where(incomeIsReceived());
     const [totalExpenses] = await db.select({ sum: sql`coalesce(sum(amount::numeric),0)` }).from(expensesTable);
     const [pending] = await db.select({ sum: sql`coalesce(sum(amount::numeric),0)` }).from(incomeTable).where(eq(incomeTable.status, "Pending"));
     const inflow = Number(totalIncome?.sum ?? 0);
@@ -57976,7 +57979,8 @@ var ListBusinessUnitsResponseItem = objectType({
   "logoUrl": stringType().nullish(),
   "description": stringType().nullish(),
   "isActive": booleanType(),
-  "createdAt": coerce.date()
+  "createdAt": coerce.date(),
+  "totalCustomers": numberType().optional().describe("Number of customers assigned to this unit. Present on the list endpoint so callers can show per-unit counts without a request per unit.")
 });
 var ListBusinessUnitsResponse = arrayType(ListBusinessUnitsResponseItem);
 var CreateBusinessUnitBody = objectType({
@@ -57998,7 +58002,8 @@ var CreateBusinessUnitResponse = objectType({
   "logoUrl": stringType().nullish(),
   "description": stringType().nullish(),
   "isActive": booleanType(),
-  "createdAt": coerce.date()
+  "createdAt": coerce.date(),
+  "totalCustomers": numberType().optional().describe("Number of customers assigned to this unit. Present on the list endpoint so callers can show per-unit counts without a request per unit.")
 });
 var GetBusinessUnitParams = objectType({
   "id": coerce.number()
@@ -58012,7 +58017,8 @@ var GetBusinessUnitResponse = objectType({
   "logoUrl": stringType().nullish(),
   "description": stringType().nullish(),
   "isActive": booleanType(),
-  "createdAt": coerce.date()
+  "createdAt": coerce.date(),
+  "totalCustomers": numberType().optional().describe("Number of customers assigned to this unit. Present on the list endpoint so callers can show per-unit counts without a request per unit.")
 }).and(objectType({
   "totalRevenue": numberType().optional(),
   "totalExpenses": numberType().optional(),
@@ -58044,7 +58050,8 @@ var UpdateBusinessUnitResponse = objectType({
   "logoUrl": stringType().nullish(),
   "description": stringType().nullish(),
   "isActive": booleanType(),
-  "createdAt": coerce.date()
+  "createdAt": coerce.date(),
+  "totalCustomers": numberType().optional().describe("Number of customers assigned to this unit. Present on the list endpoint so callers can show per-unit counts without a request per unit.")
 });
 var listCustomersQueryPageDefault = 1;
 var listCustomersQueryLimitDefault = 20;
@@ -58708,8 +58715,13 @@ router2.get("/business-units", async (req, res) => {
     if (category && category !== "null") {
       conditions.push(eq(businessUnitsTable.category, category));
     }
-    const units = await db.select().from(businessUnitsTable).where(conditions.length > 0 ? and(...conditions) : void 0).orderBy(businessUnitsTable.name);
-    res.json(units);
+    const rows = await db.select({
+      unit: businessUnitsTable,
+      totalCustomers: sql`count(${customersTable.id})`
+    }).from(businessUnitsTable).leftJoin(customersTable, eq(customersTable.businessUnitId, businessUnitsTable.id)).where(conditions.length > 0 ? and(...conditions) : void 0).groupBy(businessUnitsTable.id).orderBy(businessUnitsTable.name);
+    res.json(
+      rows.map((r) => ({ ...r.unit, totalCustomers: Number(r.totalCustomers) }))
+    );
   } catch (err) {
     handleRouteError(req, res, err);
   }
@@ -59207,7 +59219,7 @@ router5.get("/finance/profit-loss", async (req, res) => {
   try {
     const { period, startDate: sd, endDate: ed, businessUnitId } = req.query;
     const { startDate, endDate } = sd && sd !== "null" && ed && ed !== "null" ? { startDate: sd, endDate: ed } : getPeriodDates(period || "this_month");
-    const incomeConditions = [];
+    const incomeConditions = [incomeIsReceived()];
     const expenseConditions = [];
     if (startDate) {
       incomeConditions.push(gte(incomeTable.date, startDate));
@@ -59253,7 +59265,7 @@ router5.get("/finance/profit-loss", async (req, res) => {
 router5.get("/finance/cashflow-detail", async (req, res) => {
   try {
     const { period = "monthly", businessUnitId } = req.query;
-    const incomeConditions = [];
+    const incomeConditions = [incomeIsReceived()];
     const expenseConditions = [];
     if (businessUnitId && businessUnitId !== "null") {
       incomeConditions.push(eq(incomeTable.businessUnitId, parseInt(businessUnitId)));
@@ -59305,7 +59317,7 @@ router6.get("/reports/revenue", async (req, res) => {
   try {
     const { period = "this_month", businessUnitId, groupBy = "month" } = req.query;
     const { startDate, endDate } = getPeriodDates(period);
-    const incConds = [];
+    const incConds = [incomeIsReceived()];
     const expConds = [];
     if (startDate) {
       incConds.push(gte(incomeTable.date, startDate));
@@ -59364,7 +59376,7 @@ router6.get("/reports/analytics", async (req, res) => {
     const units = await db.select().from(businessUnitsTable);
     const stats = await Promise.all(
       units.map(async (u) => {
-        const incConds = [eq(incomeTable.businessUnitId, u.id)];
+        const incConds = [eq(incomeTable.businessUnitId, u.id), incomeIsReceived()];
         const expConds = [eq(expensesTable.businessUnitId, u.id)];
         if (startDate) {
           incConds.push(gte(incomeTable.date, startDate));

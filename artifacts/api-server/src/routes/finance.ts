@@ -3,6 +3,7 @@ import { db, eq, sql, and, gte, lte, desc } from "@workspace/db";
 import { incomeTable, expensesTable, businessUnitsTable, customersTable } from "@workspace/db";
 import { getPeriodDates } from "../lib/period";
 import { handleRouteError } from "../lib/route-error";
+import { incomeIsReceived } from "../lib/income-status";
 
 const router = Router();
 
@@ -178,7 +179,9 @@ router.get("/finance/profit-loss", async (req, res) => {
       ? { startDate: sd as string, endDate: ed as string }
       : getPeriodDates(period as string || "this_month");
 
-    const incomeConditions: any[] = [];
+    // Revenue and the monthly breakdown below both read incomeConditions, so
+    // seeding it here keeps Pending/Cancelled out of every P&L figure.
+    const incomeConditions: any[] = [incomeIsReceived()];
     const expenseConditions: any[] = [];
     if (startDate) { incomeConditions.push(gte(incomeTable.date, startDate)); expenseConditions.push(gte(expensesTable.date, startDate)); }
     if (endDate) { incomeConditions.push(lte(incomeTable.date, endDate)); expenseConditions.push(lte(expensesTable.date, endDate)); }
@@ -229,7 +232,9 @@ router.get("/finance/cashflow-detail", async (req, res) => {
   try {
     const { period = "monthly", businessUnitId } = req.query;
 
-    const incomeConditions: any[] = [];
+    // Inflow (total and per-month) counts received money only — Pending is
+    // surfaced separately as outstandingInvoices just below.
+    const incomeConditions: any[] = [incomeIsReceived()];
     const expenseConditions: any[] = [];
     if (businessUnitId && businessUnitId !== "null") {
       incomeConditions.push(eq(incomeTable.businessUnitId, parseInt(businessUnitId as string)));

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import {
   useListCustomers, useGetCustomerStats, useCreateCustomer, useListBusinessUnits,
-  getListCustomersQueryKey, getGetCustomerStatsQueryKey,
+  getListCustomersQueryKey, getGetCustomerStatsQueryKey, getListBusinessUnitsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -52,7 +52,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function CRM() {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"name" | "date_added" | "last_modified">("date_added");
@@ -65,10 +65,12 @@ export default function CRM() {
   const createCustomer = useCreateCustomer();
   const { data: businessUnits } = useListBusinessUnits();
 
-  // Read ?bu= / ?buName= from URL (deep-link from BU detail page)
-  const qp = new URLSearchParams(location.includes("?") ? location.split("?")[1] : "");
+  // Read ?bu= / ?buName= from URL (deep-link from BU detail page, and the
+  // Business Unit filter below). wouter's useLocation() returns the pathname
+  // only, so the query string has to come from useSearch().
+  const qp = new URLSearchParams(useSearch());
   const buFromUrl = qp.get("bu") ?? "";
-  const buNameFromUrl = decodeURIComponent(qp.get("buName") ?? "");
+  const buNameFromUrl = qp.get("buName") ?? "";
 
   const customersQuery = useListCustomers({
     search: search.length > 2 ? search : null,
@@ -81,6 +83,20 @@ export default function CRM() {
 
   function clearBuFilter() {
     setLocation("/crm");
+  }
+
+  // Writing the filter into the URL (rather than local state) keeps it shareable
+  // and lets the browser Back button undo it, and carries buName so the heading
+  // still reads "Customer untuk <BU>" exactly as it does for the deep-link.
+  function selectBusinessUnit(value: string) {
+    if (value === "all") {
+      clearBuFilter();
+      return;
+    }
+    const unit = (businessUnits ?? []).find(bu => String(bu.id) === value);
+    setLocation(
+      `/crm?bu=${value}${unit ? `&buName=${encodeURIComponent(unit.name)}` : ""}`,
+    );
   }
 
   function setF(key: keyof typeof EMPTY_FORM, value: string) {
@@ -108,6 +124,9 @@ export default function CRM() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getListCustomersQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getGetCustomerStatsQueryKey() }),
+        // The BU dropdown shows a per-unit customer count, so it goes stale
+        // the moment a customer is added to one.
+        queryClient.invalidateQueries({ queryKey: getListBusinessUnitsQueryKey() }),
       ]);
       toast({ title: "Customer berhasil ditambahkan ✓" });
       setForm({ ...EMPTY_FORM });
@@ -281,11 +300,11 @@ export default function CRM() {
 
       <Card className="border-none shadow-sm overflow-hidden flex flex-col">
         <div className="p-4 border-b bg-card flex flex-col sm:flex-row gap-4 justify-between items-center">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <div className="relative w-full sm:w-80">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search by name, email, or company..." 
+              <Input
+                placeholder="Search by name, email, or company..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 bg-background border-input"
@@ -300,6 +319,26 @@ export default function CRM() {
                 <SelectItem value="name">Nama A–Z</SelectItem>
                 <SelectItem value="date_added">Date Added</SelectItem>
                 <SelectItem value="last_modified">Last Modified</SelectItem>
+              </SelectContent>
+            </Select>
+            {/* Filter per Business Unit — shares the ?bu= URL param with the
+                deep-link from the BU detail page, so both stay in sync. */}
+            <Select value={buFromUrl || "all"} onValueChange={selectBusinessUnit}>
+              {/* Wide enough for a unit name plus its "(n)" count before the
+                  label starts clipping against the chevron. */}
+              <SelectTrigger className="w-[250px] bg-background shrink-0">
+                <Building className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  Semua Business Unit{stats ? ` (${stats.total})` : ""}
+                </SelectItem>
+                {(businessUnits ?? []).map(bu => (
+                  <SelectItem key={bu.id} value={String(bu.id)}>
+                    {bu.name} ({bu.totalCustomers ?? 0})
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

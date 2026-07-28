@@ -118,7 +118,8 @@ export const ListBusinessUnitsResponseItem = zod.object({
   "logoUrl": zod.string().nullish(),
   "description": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "totalCustomers": zod.number().optional().describe('Number of customers assigned to this unit. Present on the list endpoint so callers can show per-unit counts without a request per unit.')
 })
 export const ListBusinessUnitsResponse = zod.array(ListBusinessUnitsResponseItem)
 
@@ -146,7 +147,8 @@ export const CreateBusinessUnitResponse = zod.object({
   "logoUrl": zod.string().nullish(),
   "description": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "totalCustomers": zod.number().optional().describe('Number of customers assigned to this unit. Present on the list endpoint so callers can show per-unit counts without a request per unit.')
 })
 
 
@@ -166,7 +168,8 @@ export const GetBusinessUnitResponse = zod.object({
   "logoUrl": zod.string().nullish(),
   "description": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "totalCustomers": zod.number().optional().describe('Number of customers assigned to this unit. Present on the list endpoint so callers can show per-unit counts without a request per unit.')
 }).and(zod.object({
   "totalRevenue": zod.number().optional(),
   "totalExpenses": zod.number().optional(),
@@ -205,7 +208,8 @@ export const UpdateBusinessUnitResponse = zod.object({
   "logoUrl": zod.string().nullish(),
   "description": zod.string().nullish(),
   "isActive": zod.boolean(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "totalCustomers": zod.number().optional().describe('Number of customers assigned to this unit. Present on the list endpoint so callers can show per-unit counts without a request per unit.')
 })
 
 
