@@ -1,2 +1,4 @@
+# Internal operations dashboard — every route requires a signed-in staff
+# account, so there is nothing for a crawler to reach but the login page.
 User-agent: *
-Allow: /
+Disallow: /
