@@ -61,6 +61,23 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist/public'),
     emptyOutDir: true,
+    rollupOptions: {
+      onwarn(warning, defaultHandler) {
+        // The shadcn components carry a Next.js "use client" directive, which
+        // means nothing in a Vite SPA. Rollup strips it and then cannot map the
+        // notice back to a source line, printing a red "Error when using
+        // sourcemap..." for eight files on every build. Nothing is wrong — the
+        // build succeeds — but it reads like a failure in CI logs, so drop just
+        // this one class and let every other warning through.
+        if (
+          warning.message.includes('Error when using sourcemap') ||
+          warning.code === 'MODULE_LEVEL_DIRECTIVE'
+        ) {
+          return;
+        }
+        defaultHandler(warning);
+      },
+    },
   },
   server: {
     port,

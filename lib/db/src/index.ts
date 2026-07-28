@@ -5,15 +5,43 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+let instance: NodePgDatabase<typeof schema> | null = null;
+
+function connect(): NodePgDatabase<typeof schema> {
+  if (instance) return instance;
+
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error(
+      "DATABASE_URL is not set. On Vercel add it under Settings → " +
+        "Environment Variables, using Supabase's Transaction pooler (port 6543).",
+    );
+  }
+
+  instance = drizzle(new Pool({ connectionString: url }), { schema });
+  return instance;
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-
-export const db: NodePgDatabase<typeof schema> = drizzle(pool, { schema });
+/**
+ * Connects on first use, not at import.
+ *
+ * Throwing at module scope kills a serverless function before it can answer
+ * anything, and the platform reports only FUNCTION_INVOCATION_FAILED — with no
+ * hint about which variable is missing, and every route down including
+ * /api/healthz, which needs no database at all. Going through a proxy means a
+ * missing DATABASE_URL surfaces as a readable error on the routes that query,
+ * and leaves the rest of the API serving normally.
+ */
+export const db: NodePgDatabase<typeof schema> = new Proxy(
+  {} as NodePgDatabase<typeof schema>,
+  {
+    get(_target, prop, receiver) {
+      const real = connect() as object;
+      const value = Reflect.get(real, prop, receiver);
+      return typeof value === "function" ? value.bind(real) : value;
+    },
+  },
+);
 
 export * from "./schema";
 

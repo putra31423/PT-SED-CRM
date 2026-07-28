@@ -14,18 +14,38 @@ import { createRemoteJWKSet, jwtVerify, errors } from "jose";
  * 10-minute cache lifetime.
  */
 
-const supabaseUrl = process.env["SUPABASE_URL"];
+/**
+ * Resolved on first request rather than at import.
+ *
+ * Throwing at module scope kills a serverless function before it can answer
+ * anything, and the platform reports only FUNCTION_INVOCATION_FAILED — every
+ * route, including /api/healthz, fails with no clue which variable is missing.
+ * Deferring turns a missing SUPABASE_URL into a readable 500 on the routes
+ * that actually need it.
+ */
+let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 
-if (!supabaseUrl) {
-  throw new Error(
-    "SUPABASE_URL must be set — it is required to verify access tokens. " +
-      "Use the project URL, e.g. https://<project-ref>.supabase.co",
+function getJwks() {
+  if (jwks) return jwks;
+
+  const supabaseUrl = process.env["SUPABASE_URL"];
+  if (!supabaseUrl) {
+    throw new Error(
+      "SUPABASE_URL is not set. The API needs it to fetch the JWKS that " +
+        "verifies access tokens. Set it to the project URL, e.g. " +
+        "https://<project-ref>.supabase.co",
+    );
+  }
+
+  jwks = createRemoteJWKSet(
+    new URL(`${supabaseUrl.replace(/\/+$/, "")}/auth/v1/.well-known/jwks.json`),
   );
+  return jwks;
 }
 
-const jwks = createRemoteJWKSet(
-  new URL(`${supabaseUrl.replace(/\/+$/, "")}/auth/v1/.well-known/jwks.json`),
-);
+function issuer() {
+  return `${process.env["SUPABASE_URL"]!.replace(/\/+$/, "")}/auth/v1`;
+}
 
 export interface AuthenticatedUser {
   id: string;
@@ -56,10 +76,19 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
     return;
   }
 
+  let keys: ReturnType<typeof createRemoteJWKSet>;
   try {
-    const { payload } = await jwtVerify(token, jwks, {
-      issuer: `${supabaseUrl.replace(/\/+$/, "")}/auth/v1`,
-    });
+    keys = getJwks();
+  } catch (err) {
+    // Configuration, not credentials — 500 with the reason, so the cause is
+    // visible in the response instead of only in the platform logs.
+    req.log?.error({ err }, "Auth is not configured");
+    res.status(500).json({ error: (err as Error).message });
+    return;
+  }
+
+  try {
+    const { payload } = await jwtVerify(token, keys, { issuer: issuer() });
 
     // Supabase puts the user id in `sub`. Without it the token is not one of
     // ours, whatever else it may validly contain.
