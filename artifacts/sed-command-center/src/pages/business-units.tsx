@@ -174,7 +174,10 @@ export default function BusinessUnits() {
       // throws on non-2xx. A bare fetch here returns 401 now that the API
       // requires authentication.
       await customFetch(`${BASE}/api/business-units/${deleteUnit.id}`, { method: "DELETE" });
-      toast({ title: "Business unit dihapus" });
+      toast({
+        title: "Business unit dihapus",
+        description: "Data customer, deal, income, dan expense tetap tersimpan tanpa business unit.",
+      });
       queryClient.invalidateQueries({ queryKey: getListBusinessUnitsQueryKey() });
       setDeleteUnit(null);
     } catch (error) {
@@ -436,7 +439,7 @@ export default function BusinessUnits() {
           <DialogHeader>
             <DialogTitle>Hapus Business Unit?</DialogTitle>
             <DialogDescription>
-              <strong>{deleteUnit?.name}</strong> akan dihapus secara permanen. Data income, expense, dan customer yang terhubung mungkin terpengaruh. Tindakan ini tidak bisa dibatalkan.
+              <strong>{deleteUnit?.name}</strong> akan dihapus secara permanen. Data customer, deal, income, dan expense yang terhubung tetap disimpan, tetapi relasinya ke business unit ini akan dilepas. Tindakan ini tidak bisa dibatalkan.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">

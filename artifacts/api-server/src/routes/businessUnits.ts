@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, eq, sql, and } from "@workspace/db";
 import {
   businessUnitsTable,
+  dealsTable,
   incomeTable,
   expensesTable,
   customersTable,
@@ -154,11 +155,53 @@ router.patch("/business-units/:id", async (req, res) => {
 // DELETE /business-units/:id
 router.delete("/business-units/:id", async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
-    const [deleted] = await db
-      .delete(businessUnitsTable)
-      .where(eq(businessUnitsTable.id, id))
-      .returning();
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({
+        error: "Invalid business unit ID",
+        code: "INVALID_INPUT",
+      });
+      return;
+    }
+
+    const deleted = await db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select({ id: businessUnitsTable.id })
+        .from(businessUnitsTable)
+        .where(eq(businessUnitsTable.id, id));
+
+      if (!existing) return null;
+
+      // Child records are still valuable CRM and accounting history. Their
+      // foreign keys are nullable, so detach them instead of deleting them.
+      // Keeping every update and the final delete in one transaction prevents
+      // a partial result if any statement fails.
+      const updatedAt = new Date();
+      await tx
+        .update(customersTable)
+        .set({ businessUnitId: null, updatedAt })
+        .where(eq(customersTable.businessUnitId, id));
+      await tx
+        .update(dealsTable)
+        .set({ businessUnitId: null, updatedAt })
+        .where(eq(dealsTable.businessUnitId, id));
+      await tx
+        .update(incomeTable)
+        .set({ businessUnitId: null, updatedAt })
+        .where(eq(incomeTable.businessUnitId, id));
+      await tx
+        .update(expensesTable)
+        .set({ businessUnitId: null, updatedAt })
+        .where(eq(expensesTable.businessUnitId, id));
+
+      const [removed] = await tx
+        .delete(businessUnitsTable)
+        .where(eq(businessUnitsTable.id, id))
+        .returning({ id: businessUnitsTable.id });
+
+      return removed ?? null;
+    });
+
     if (!deleted) {
       res.status(404).json({ error: "Not found" });
       return;
