@@ -51,4 +51,22 @@ app.use("/api", healthRouter);
 // Everything else requires a valid Supabase access token.
 app.use("/api", requireAuth, router);
 
+/**
+ * JSON 404 instead of Express's HTML page, echoing the path that actually
+ * arrived.
+ *
+ * On Vercel a request that never reaches this app returns the platform's own
+ * HTML 404, so the two cases are otherwise indistinguishable from the outside
+ * — which cost several deploys to tell apart. A JSON body here means the app
+ * was reached and simply has no such route; an HTML body means the request
+ * never got this far.
+ */
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Not found",
+    path: req.originalUrl,
+    hint: "This response came from the Express app, so routing reached it.",
+  });
+});
+
 export default app;

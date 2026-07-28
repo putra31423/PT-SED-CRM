@@ -38509,7 +38509,10 @@ var GetAnalyticsResponse = objectType({
 var router = (0, import_express.Router)();
 router.get("/healthz", (_req, res) => {
   const data = HealthCheckResponse.parse({ status: "ok" });
-  res.json(data);
+  res.json({
+    ...data,
+    build: process.env["VERCEL_GIT_COMMIT_SHA"]?.slice(0, 7) ?? "local"
+  });
 });
 var health_default = router;
 
@@ -59681,6 +59684,13 @@ app.use(import_express9.default.json());
 app.use(import_express9.default.urlencoded({ extended: true }));
 app.use("/api", health_default);
 app.use("/api", requireAuth, routes_default);
+app.use((req, res) => {
+  res.status(404).json({
+    error: "Not found",
+    path: req.originalUrl,
+    hint: "This response came from the Express app, so routing reached it."
+  });
+});
 var app_default = app;
 
 // src/vercel-handler.ts
