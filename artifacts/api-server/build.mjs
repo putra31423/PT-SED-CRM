@@ -118,6 +118,50 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
     `,
     },
   });
+
+  await buildVercelFunction();
+}
+
+/**
+ * Bundles the same Express app into api/[...path].mjs for Vercel.
+ *
+ * @vercel/node only strips types from the entry point; it neither compiles nor
+ * bundles what that entry imports. Handing it a TypeScript import therefore
+ * produced a function that died on load. Bundling here leaves a single file
+ * with nothing left to resolve.
+ *
+ * The .mjs extension is deliberate: it marks the file as ESM regardless of the
+ * nearest package.json `type`, which is what the two earlier failures came
+ * down to. The banner supplies `require` for the CommonJS dependencies that
+ * end up inside an ESM bundle — pino reaches for require("tty").
+ *
+ * Written into api/ rather than dist/ because Vercel discovers functions from
+ * that directory, and it runs buildCommand before collecting them.
+ */
+async function buildVercelFunction() {
+  const outfile = path.resolve(artifactDir, "../../api/[...path].mjs");
+
+  await esbuild({
+    entryPoints: [path.resolve(artifactDir, "src/vercel-handler.ts")],
+    platform: "node",
+    bundle: true,
+    format: "esm",
+    target: "node22",
+    outfile,
+    logLevel: "info",
+    // The only true native binding here; everything else bundles cleanly.
+    external: ["pg-native"],
+    banner: {
+      js: `import { createRequire as __cr } from 'node:module';
+import __p from 'node:path';
+import __u from 'node:url';
+
+globalThis.require = __cr(import.meta.url);
+globalThis.__filename = __u.fileURLToPath(import.meta.url);
+globalThis.__dirname = __p.dirname(globalThis.__filename);
+`,
+    },
+  });
 }
 
 buildAll().catch((err) => {

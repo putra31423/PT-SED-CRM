@@ -2,14 +2,13 @@
   "name": "workspace",
   "version": "0.0.0",
   "license": "MIT",
-  "//type": "Deliberately NOT `module`. api/[...path].ts compiles under this package.json, and marking the root ESM makes Vercel emit an ESM function — where pino's internal require(\"tty\") is illegal and the function dies at import with FUNCTION_INVOCATION_FAILED. Measured: the ESM bundle throws 'Dynamic require of \"tty\" is not supported', the CommonJS bundle loads. It was briefly set to `module` to allow a top-level await in lib/db; that await is gone, so CommonJS is both correct and safer here.",
+  "//type": "No `type` field on purpose. The Vercel function is emitted as api/[...path].mjs by artifacts/api-server/build.mjs, and the .mjs extension already marks it ESM — so nothing here depends on this field. Setting it either way previously broke that function, in opposite directions.",
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "dev": "pnpm --parallel --filter @workspace/api-server --filter @workspace/sed-command-center run dev",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
-    "typecheck:api": "tsc -p api/tsconfig.json",
-    "typecheck": "pnpm run typecheck:libs && pnpm run typecheck:api && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "private": true,
   "dependencies": {
