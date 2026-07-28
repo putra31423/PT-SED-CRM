@@ -2,8 +2,7 @@
   "name": "workspace",
   "version": "0.0.0",
   "license": "MIT",
-  "//type": "api/[...path].ts sits at the repository root, so Vercel compiles it under this package.json. Without `type: module` it is treated as CommonJS, where the top-level await in lib/db/src/index.ts is illegal — the function then dies at import with FUNCTION_INVOCATION_FAILED before any handler runs. Every workspace package is already ESM; this makes the root agree.",
-  "type": "module",
+  "//type": "Deliberately NOT `module`. api/[...path].ts compiles under this package.json, and marking the root ESM makes Vercel emit an ESM function — where pino's internal require(\"tty\") is illegal and the function dies at import with FUNCTION_INVOCATION_FAILED. Measured: the ESM bundle throws 'Dynamic require of \"tty\" is not supported', the CommonJS bundle loads. It was briefly set to `module` to allow a top-level await in lib/db; that await is gone, so CommonJS is both correct and safer here.",
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "dev": "pnpm --parallel --filter @workspace/api-server --filter @workspace/sed-command-center run dev",
