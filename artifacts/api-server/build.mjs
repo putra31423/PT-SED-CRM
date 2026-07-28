@@ -123,23 +123,25 @@ globalThis.__dirname = __bannerPath.dirname(globalThis.__filename);
 }
 
 /**
- * Bundles the same Express app into api/[...path].mjs for Vercel.
+ * Bundles the same Express app into api/[...path].js for Vercel.
  *
  * @vercel/node only strips types from the entry point; it neither compiles nor
  * bundles what that entry imports. Handing it a TypeScript import therefore
  * produced a function that died on load. Bundling here leaves a single file
  * with nothing left to resolve.
  *
- * The .mjs extension is deliberate: it marks the file as ESM regardless of the
- * nearest package.json `type`, which is what the two earlier failures came
- * down to. The banner supplies `require` for the CommonJS dependencies that
- * end up inside an ESM bundle — pino reaches for require("tty").
+ * The extension is .js, not .mjs: Vercel only recognises a catch-all route
+ * from a .js file, and with .mjs it matched single-segment paths only —
+ * /api/customers worked while /api/dashboard/summary returned 404. ESM is
+ * declared through `type: module` in the root package.json instead. The banner
+ * supplies `require` for the CommonJS dependencies that end up inside an ESM
+ * bundle — pino reaches for require("tty").
  *
  * Written into api/ rather than dist/ because Vercel discovers functions from
  * that directory, and it runs buildCommand before collecting them.
  */
 async function buildVercelFunction() {
-  const outfile = path.resolve(artifactDir, "../../api/[...path].mjs");
+  const outfile = path.resolve(artifactDir, "../../api/[...path].js");
 
   await esbuild({
     entryPoints: [path.resolve(artifactDir, "src/vercel-handler.ts")],

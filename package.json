@@ -2,7 +2,8 @@
   "name": "workspace",
   "version": "0.0.0",
   "license": "MIT",
-  "//type": "No `type` field on purpose. The Vercel function is emitted as api/[...path].mjs by artifacts/api-server/build.mjs, and the .mjs extension already marks it ESM — so nothing here depends on this field. Setting it either way previously broke that function, in opposite directions.",
+  "//type": "Required. The Vercel function is emitted as api/[...path].js — .js because Vercel only treats that extension as a catch-all route — and its bundled output is ESM, so the package must declare it. Safe now that the function is a single self-contained file: the earlier breakage came from unbundled imports, not from this field.",
+  "type": "module",
   "scripts": {
     "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
     "dev": "pnpm --parallel --filter @workspace/api-server --filter @workspace/sed-command-center run dev",
