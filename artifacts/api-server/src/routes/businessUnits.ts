@@ -11,6 +11,10 @@ import { CreateBusinessUnitBody } from "@workspace/api-zod";
 import { handleRouteError } from "../lib/route-error";
 
 const router = Router();
+const businessUnitNameCollator = new Intl.Collator("id", {
+  numeric: true,
+  sensitivity: "base",
+});
 
 // GET /business-units
 router.get("/business-units", async (req, res) => {
@@ -30,12 +34,13 @@ router.get("/business-units", async (req, res) => {
       .from(businessUnitsTable)
       .leftJoin(customersTable, eq(customersTable.businessUnitId, businessUnitsTable.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .groupBy(businessUnitsTable.id)
-      .orderBy(businessUnitsTable.name);
+      .groupBy(businessUnitsTable.id);
 
-    res.json(
-      rows.map((r) => ({ ...r.unit, totalCustomers: Number(r.totalCustomers) })),
-    );
+    const units = rows
+      .map((r) => ({ ...r.unit, totalCustomers: Number(r.totalCustomers) }))
+      .sort((a, b) => businessUnitNameCollator.compare(a.name, b.name));
+
+    res.json(units);
   } catch (err) {
     handleRouteError(req, res, err);
   }

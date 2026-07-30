@@ -58708,6 +58708,10 @@ var GetAnalyticsResponse = objectType({
 
 // src/routes/businessUnits.ts
 var router2 = (0, import_express2.Router)();
+var businessUnitNameCollator = new Intl.Collator("id", {
+  numeric: true,
+  sensitivity: "base"
+});
 router2.get("/business-units", async (req, res) => {
   try {
     const { category } = req.query;
@@ -58718,10 +58722,9 @@ router2.get("/business-units", async (req, res) => {
     const rows = await db.select({
       unit: businessUnitsTable,
       totalCustomers: sql`count(${customersTable.id})`
-    }).from(businessUnitsTable).leftJoin(customersTable, eq(customersTable.businessUnitId, businessUnitsTable.id)).where(conditions.length > 0 ? and(...conditions) : void 0).groupBy(businessUnitsTable.id).orderBy(businessUnitsTable.name);
-    res.json(
-      rows.map((r) => ({ ...r.unit, totalCustomers: Number(r.totalCustomers) }))
-    );
+    }).from(businessUnitsTable).leftJoin(customersTable, eq(customersTable.businessUnitId, businessUnitsTable.id)).where(conditions.length > 0 ? and(...conditions) : void 0).groupBy(businessUnitsTable.id);
+    const units = rows.map((r) => ({ ...r.unit, totalCustomers: Number(r.totalCustomers) })).sort((a, b) => businessUnitNameCollator.compare(a.name, b.name));
+    res.json(units);
   } catch (err) {
     handleRouteError(req, res, err);
   }
