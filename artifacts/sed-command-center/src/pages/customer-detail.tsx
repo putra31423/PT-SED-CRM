@@ -29,6 +29,7 @@ import {
   Receipt, TrendingDown,
 } from "lucide-react";
 import { formatIDR } from "@/lib/utils";
+import { getEmailLink, getWhatsAppLink } from "@/lib/contact-links";
 
 const STATUS_OPTIONS = [
   { value: "Lead",            label: "Lead",           icon: Search,    color: "bg-slate-100 text-slate-700 border-slate-300" },
@@ -273,7 +274,7 @@ export default function CustomerDetail() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Email Address</p>
-                    <a href={`mailto:${customer.email}`} className="text-sm font-medium hover:text-primary hover:underline">{customer.email}</a>
+                    <a href={getEmailLink(customer.email) ?? undefined} className="text-sm font-medium hover:text-primary hover:underline">{customer.email}</a>
                   </div>
                 </div>
               )}
@@ -284,7 +285,16 @@ export default function CustomerDetail() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Phone Number</p>
-                    <a href={`tel:${customer.phone}`} className="text-sm font-medium hover:text-primary hover:underline">{customer.phone}</a>
+                    <a
+                      href={getWhatsAppLink(customer.phone) ?? undefined}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-medium hover:text-green-600 hover:underline"
+                      aria-label={`Chat WhatsApp dengan ${customer.fullName}`}
+                      title="Buka chat WhatsApp"
+                    >
+                      {customer.phone}
+                    </a>
                   </div>
                 </div>
               )}
@@ -295,7 +305,16 @@ export default function CustomerDetail() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">WhatsApp</p>
-                    <span className="text-sm font-medium">{customer.whatsapp}</span>
+                    <a
+                      href={getWhatsAppLink(customer.whatsapp) ?? undefined}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-medium hover:text-green-600 hover:underline"
+                      aria-label={`Chat WhatsApp dengan ${customer.fullName}`}
+                      title="Buka chat WhatsApp"
+                    >
+                      {customer.whatsapp}
+                    </a>
                   </div>
                 </div>
               )}

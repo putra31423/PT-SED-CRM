@@ -31,6 +31,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { QueryErrorAlert } from "@/components/query-error-alert";
 import { formatApiError } from "@/lib/api-error";
+import { getEmailLink, getWhatsAppLink } from "@/lib/contact-links";
 
 const EMPTY_FORM = {
   fullName: "",
@@ -415,14 +416,25 @@ export default function CRM() {
                     <TableCell>
                       <div className="space-y-1 text-sm">
                         {customer.email && (
-                          <div className="flex items-center text-muted-foreground">
+                          <a
+                            href={getEmailLink(customer.email) ?? undefined}
+                            className="flex w-fit items-center text-muted-foreground transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            aria-label={`Kirim email ke ${customer.email}`}
+                          >
                             <Mail className="w-3.5 h-3.5 mr-2 shrink-0" /> {customer.email}
-                          </div>
+                          </a>
                         )}
                         {customer.phone && (
-                          <div className="flex items-center text-muted-foreground">
+                          <a
+                            href={getWhatsAppLink(customer.phone) ?? undefined}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex w-fit items-center text-muted-foreground transition-colors hover:text-green-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            aria-label={`Chat WhatsApp dengan ${customer.fullName}`}
+                            title="Buka chat WhatsApp"
+                          >
                             <Phone className="w-3.5 h-3.5 mr-2 shrink-0" /> {customer.phone}
-                          </div>
+                          </a>
                         )}
                       </div>
                     </TableCell>
