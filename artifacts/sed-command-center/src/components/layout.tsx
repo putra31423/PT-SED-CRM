@@ -196,7 +196,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             </Link>
           </SidebarFooter>
         </Sidebar>
-        <main className="flex-1 overflow-auto bg-card text-card-foreground transition-all duration-300">
+        <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto bg-card text-card-foreground transition-all duration-300">
           <div className="h-14 border-b border-border flex items-center px-4 bg-background sticky top-0 z-10">
             <SidebarTrigger />
             <div className="ml-4 font-medium text-sm text-muted-foreground flex items-center gap-2">
@@ -204,7 +204,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               System Status: Nominal
             </div>
           </div>
-          <div className="p-4 md:p-8">
+          <div className="min-w-0 p-4 md:p-8">
             {children}
           </div>
         </main>

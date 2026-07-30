@@ -236,7 +236,7 @@ function ImportDialog({
           {/* Step 1 — pick a file */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">Pilih berkas CSV</Label>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <Input
                 type="file"
                 accept=".csv,text/csv"
@@ -253,7 +253,7 @@ function ImportDialog({
                 variant="outline"
                 onClick={onDownloadTemplate}
                 disabled={importing}
-                className="h-11 shrink-0 transition-transform active:scale-95"
+                className="h-11 w-full shrink-0 transition-transform active:scale-95 sm:w-auto"
               >
                 <Download className="mr-2 h-4 w-4" />
                 Template
@@ -563,20 +563,20 @@ export default function FinanceHub() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-foreground">Finance Hub</h2>
-          <p className="text-muted-foreground">
+    <div className="min-w-0 max-w-full space-y-5 sm:space-y-6">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Finance Hub</h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground sm:text-base">
             {buFromUrl && buNameFromUrl
               ? `Transaksi untuk ${buNameFromUrl}`
               : "Manage cashflow, track transactions, and analyze profitability."}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center lg:justify-end">
           {/* Time range filter */}
           <Select value={periodFilter} onValueChange={setPeriodFilter}>
-            <SelectTrigger className="w-[150px] bg-background">
+            <SelectTrigger className="w-full min-w-0 bg-background sm:w-[150px]">
               <CalendarIcon className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
               <SelectValue placeholder="All Time" />
             </SelectTrigger>
@@ -590,7 +590,7 @@ export default function FinanceHub() {
             </SelectContent>
           </Select>
           <Select value={buFilter} onValueChange={setBuFilter}>
-            <SelectTrigger className="w-[200px] bg-background">
+            <SelectTrigger className="w-full min-w-0 bg-background sm:w-[200px]">
               <SelectValue placeholder="All Business Units" />
             </SelectTrigger>
             <SelectContent>
@@ -602,7 +602,7 @@ export default function FinanceHub() {
           </Select>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" disabled={exporting}>
+              <Button variant="outline" disabled={exporting} className="w-full">
                 <Download className="w-4 h-4 mr-2" />
                 {exporting ? "Exporting..." : "Export"}
                 <ChevronDown className="w-3.5 h-3.5 ml-2 text-muted-foreground" />
@@ -632,7 +632,7 @@ export default function FinanceHub() {
             <Button
               variant="outline"
               onClick={() => { resetImport(); setImportOpen(true); }}
-              className="group transition-transform active:scale-95"
+              className="group w-full transition-transform active:scale-95"
             >
               <Upload className="w-4 h-4 mr-2 transition-transform group-hover:-translate-y-0.5" />
               Import
@@ -657,9 +657,9 @@ export default function FinanceHub() {
 
       {/* BU filter banner — shown when deep-linked from a BU detail card */}
       {buFromUrl && buNameFromUrl && (
-        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2 bg-primary/5 border border-primary/20 rounded-xl px-3 py-3 sm:gap-3 sm:px-4">
           <Building2 className="w-4 h-4 text-primary shrink-0" />
-          <span className="text-sm font-medium text-foreground flex-1">
+          <span className="min-w-0 basis-[calc(100%-2rem)] text-sm font-medium text-foreground sm:flex-1 sm:basis-auto">
             Menampilkan transaksi untuk:{" "}
             <span className="font-semibold text-primary">{buNameFromUrl}</span>
           </span>
@@ -667,12 +667,12 @@ export default function FinanceHub() {
             variant="ghost"
             size="sm"
             onClick={clearBuFilter}
-            className="gap-1.5 text-muted-foreground hover:text-foreground h-7 px-2"
+            className="h-8 flex-1 gap-1.5 px-2 text-muted-foreground hover:text-foreground sm:flex-none"
           >
             <X className="w-3.5 h-3.5" />
             Tampilkan semua
           </Button>
-          <Button variant="outline" size="sm" className="h-7 gap-1.5 shrink-0" asChild>
+          <Button variant="outline" size="sm" className="h-8 flex-1 gap-1.5 sm:flex-none" asChild>
             <Link href={`/business-units/${buFromUrl}`}>
               <ArrowLeft className="w-3.5 h-3.5" />
               Kembali
@@ -681,12 +681,12 @@ export default function FinanceHub() {
         </div>
       )}
 
-      <Tabs value={tab} onValueChange={handleTabChange} className="w-full space-y-6">
-        <TabsList className="bg-card border w-full justify-start h-auto p-1 overflow-x-auto rounded-lg">
-          <TabsTrigger value="income" className="px-6 py-2.5 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Income</TabsTrigger>
-          <TabsTrigger value="expenses" className="px-6 py-2.5 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Expenses</TabsTrigger>
-          <TabsTrigger value="profit-loss" className="px-6 py-2.5 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Profit & Loss</TabsTrigger>
-          <TabsTrigger value="cashflow" className="px-6 py-2.5 rounded-md data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Cashflow</TabsTrigger>
+      <Tabs value={tab} onValueChange={handleTabChange} className="min-w-0 w-full space-y-5 sm:space-y-6">
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 rounded-lg border bg-card p-1 sm:flex sm:justify-start sm:overflow-x-auto">
+          <TabsTrigger value="income" className="w-full rounded-md px-3 py-2.5 sm:w-auto sm:px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Income</TabsTrigger>
+          <TabsTrigger value="expenses" className="w-full rounded-md px-3 py-2.5 sm:w-auto sm:px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Expenses</TabsTrigger>
+          <TabsTrigger value="profit-loss" className="w-full rounded-md px-3 py-2.5 sm:w-auto sm:px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Profit & Loss</TabsTrigger>
+          <TabsTrigger value="cashflow" className="w-full rounded-md px-3 py-2.5 sm:w-auto sm:px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Cashflow</TabsTrigger>
         </TabsList>
 
         <TabsContent value="income" className="mt-0 outline-none">
@@ -930,11 +930,11 @@ function IncomeTab({ buFilter, businessUnits, startDate, endDate }: { buFilter: 
 
   return (
     <>
-    <Card className="border-none shadow-sm">
-      <div className="p-4 border-b bg-card flex flex-col sm:flex-row gap-3 justify-between items-center rounded-t-xl">
+    <Card className="min-w-0 overflow-hidden border-none shadow-sm">
+      <div className="flex flex-col gap-4 rounded-t-xl border-b bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
         {/* Search + Sort controls */}
-        <div className="flex items-center gap-2 w-full sm:flex-1">
-          <div className="relative w-full sm:w-72">
+        <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 sm:flex sm:flex-1 sm:items-center">
+          <div className="relative col-span-2 w-full sm:col-span-1 sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Cari invoice, customer, deskripsi..."
@@ -945,7 +945,7 @@ function IncomeTab({ buFilter, businessUnits, startDate, endDate }: { buFilter: 
           </div>
           {/* Sort field */}
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-            <SelectTrigger className="w-[150px] bg-background shrink-0">
+            <SelectTrigger className="w-full min-w-0 bg-background sm:w-[150px] sm:shrink-0">
               <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
               <SelectValue />
             </SelectTrigger>
@@ -967,7 +967,7 @@ function IncomeTab({ buFilter, businessUnits, startDate, endDate }: { buFilter: 
               : <ArrowDown className="w-4 h-4 text-primary" />}
           </button>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:shrink-0 sm:justify-end">
           {/* Total income display */}
           <div className="text-right">
             <p className="text-[11px] text-muted-foreground leading-tight">Total Income</p>
@@ -977,20 +977,20 @@ function IncomeTab({ buFilter, businessUnits, startDate, endDate }: { buFilter: 
           </div>
           <Sheet open={isAddOpen} onOpenChange={(v) => { setIsAddOpen(v); if (!v) resetForm(); }}>
           <SheetTrigger asChild>
-            <Button className="shrink-0 bg-green-600 hover:bg-green-700 text-white">
+            <Button className="shrink-0 bg-green-600 text-white hover:bg-green-700">
               <Plus className="w-4 h-4 mr-2" />
               Record Income
             </Button>
           </SheetTrigger>
-          <SheetContent className="sm:max-w-[480px] flex flex-col overflow-hidden p-0">
-            <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+          <SheetContent className="!w-full max-w-none flex flex-col overflow-hidden p-0 sm:max-w-[480px]">
+            <SheetHeader className="shrink-0 border-b px-4 pb-4 pt-5 sm:px-6 sm:pt-6">
               <SheetTitle>Catat Pemasukan Baru</SheetTitle>
               <SheetDescription>Isi detail transaksi income dan tekan Simpan.</SheetDescription>
             </SheetHeader>
 
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+            <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
               {/* Jumlah & Tanggal */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label>Jumlah (IDR) <span className="text-destructive">*</span></Label>
                   <Input
@@ -1056,8 +1056,8 @@ function IncomeTab({ buFilter, businessUnits, startDate, endDate }: { buFilter: 
                     </p>
                     <button type="button" onClick={() => setAddCustOpen(false)} className="text-muted-foreground hover:text-foreground text-lg leading-none">×</button>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="col-span-2 space-y-1">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1 sm:col-span-2">
                       <Label className="text-xs">Nama Lengkap <span className="text-destructive">*</span></Label>
                       <Input
                         placeholder="John Doe"
@@ -1120,7 +1120,7 @@ function IncomeTab({ buFilter, businessUnits, startDate, endDate }: { buFilter: 
               <Separator />
 
               {/* Invoice & Category */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label>No. Invoice</Label>
                   <Input placeholder="INV-2026-001" value={form.invoiceNumber} onChange={(e) => setF("invoiceNumber", e.target.value)} />
@@ -1137,7 +1137,7 @@ function IncomeTab({ buFilter, businessUnits, startDate, endDate }: { buFilter: 
               </div>
 
               {/* Payment Method & Status */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label>Metode Pembayaran</Label>
                   <Select value={form.paymentMethod} onValueChange={(v) => setF("paymentMethod", v)}>
@@ -1182,7 +1182,7 @@ function IncomeTab({ buFilter, businessUnits, startDate, endDate }: { buFilter: 
               </div>
             </div>
 
-            <SheetFooter className="px-6 py-4 border-t shrink-0 flex gap-2">
+            <SheetFooter className="flex shrink-0 gap-2 border-t px-4 py-4 sm:px-6">
               <Button variant="outline" className="flex-1" onClick={() => setIsAddOpen(false)} disabled={saving}>
                 Batal
               </Button>
@@ -1195,8 +1195,62 @@ function IncomeTab({ buFilter, businessUnits, startDate, endDate }: { buFilter: 
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <Table>
+      <div className="divide-y sm:hidden">
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="space-y-3 p-4">
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          ))
+        ) : filtered.length === 0 ? (
+          <p className="px-4 py-12 text-center text-sm text-muted-foreground">
+            {search ? "Tidak ada transaksi yang cocok." : "Belum ada data income."}
+          </p>
+        ) : filtered.map((item) => (
+          <button
+            type="button"
+            key={item.id}
+            className="block w-full p-4 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            onClick={() => openIncomeEdit(item as Income)}
+          >
+            <span className="flex items-start justify-between gap-3">
+              <span className="min-w-0">
+                <span className="block truncate font-semibold text-foreground">{item.invoiceNumber || "Tanpa invoice"}</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  {new Date(item.date).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                </span>
+              </span>
+              <span className="shrink-0 text-right">
+                <span className="block font-bold text-green-600">{formatIDR(item.amount)}</span>
+                <Badge variant="outline" className={cn(
+                  "mt-1",
+                  item.status === "Received" ? "border-green-200 bg-green-50 text-green-700" :
+                  item.status === "Pending" ? "border-amber-200 bg-amber-50 text-amber-700" :
+                  "border-red-200 bg-red-50 text-red-700",
+                )}>
+                  {item.status}
+                </Badge>
+              </span>
+            </span>
+            <span className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <span className="min-w-0">
+                <span className="block text-[11px] text-muted-foreground">Business Unit</span>
+                <span className="block truncate font-medium text-foreground">{item.businessUnitName || "—"}</span>
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[11px] text-muted-foreground">Customer</span>
+                <span className="block truncate font-medium text-foreground">{item.customerName || "—"}</span>
+              </span>
+            </span>
+            <Badge variant="secondary" className="mt-3 bg-secondary/10">{item.category || "General"}</Badge>
+          </button>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto sm:block">
+        <Table className="min-w-[780px]">
           <TableHeader className="bg-muted/50">
             <TableRow>
               <TableHead>Tanggal</TableHead>
@@ -1255,13 +1309,13 @@ function IncomeTab({ buFilter, businessUnits, startDate, endDate }: { buFilter: 
 
     {/* ── Edit Income Sheet ─────────────────────────────────────────────── */}
     <Sheet open={!!editItem} onOpenChange={(o) => { if (!o) setEditItem(null); }}>
-      <SheetContent className="sm:max-w-[480px] flex flex-col overflow-hidden p-0">
-        <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+      <SheetContent className="!w-full max-w-none flex flex-col overflow-hidden p-0 sm:max-w-[480px]">
+        <SheetHeader className="shrink-0 border-b px-4 pb-4 pt-5 sm:px-6 sm:pt-6">
           <SheetTitle>Edit Income</SheetTitle>
           <SheetDescription>Perbarui detail transaksi income.</SheetDescription>
         </SheetHeader>
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Jumlah (IDR)</Label>
               <Input type="number" value={editForm.amount ?? ""} onChange={e => setEF("amount", e.target.value)} />
@@ -1272,7 +1326,7 @@ function IncomeTab({ buFilter, businessUnits, startDate, endDate }: { buFilter: 
             </div>
           </div>
           <Separator />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>No. Invoice</Label>
               <Input value={editForm.invoiceNumber ?? ""} onChange={e => setEF("invoiceNumber", e.target.value)} placeholder="INV-2026-001" />
@@ -1309,7 +1363,7 @@ function IncomeTab({ buFilter, businessUnits, startDate, endDate }: { buFilter: 
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Kategori</Label>
               <Select value={editForm.category ?? ""} onValueChange={v => setEF("category", v)}>
@@ -1338,7 +1392,7 @@ function IncomeTab({ buFilter, businessUnits, startDate, endDate }: { buFilter: 
             <Textarea value={editForm.description ?? ""} onChange={e => setEF("description", e.target.value)} rows={2} />
           </div>
         </div>
-        <SheetFooter className="px-6 py-4 border-t shrink-0">
+        <SheetFooter className="shrink-0 border-t px-4 py-4 sm:px-6">
           {deleteConfirm ? (
             <div className="flex gap-2 w-full">
               <Button variant="outline" className="flex-1" onClick={() => setDeleteConfirm(false)} disabled={editSaving}>Batal</Button>
@@ -1544,11 +1598,11 @@ function ExpenseTab({ buFilter, businessUnits, startDate, endDate }: { buFilter:
 
   return (
     <>
-    <Card className="border-none shadow-sm">
-      <div className="p-4 border-b bg-card flex flex-col sm:flex-row gap-3 justify-between items-center rounded-t-xl">
+    <Card className="min-w-0 overflow-hidden border-none shadow-sm">
+      <div className="flex flex-col gap-4 rounded-t-xl border-b bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
         {/* Search + Sort controls */}
-        <div className="flex items-center gap-2 w-full sm:flex-1">
-          <div className="relative w-full sm:w-72">
+        <div className="grid w-full min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2 sm:flex sm:flex-1 sm:items-center">
+          <div className="relative col-span-2 w-full sm:col-span-1 sm:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Cari vendor, receipt, deskripsi..."
@@ -1559,7 +1613,7 @@ function ExpenseTab({ buFilter, businessUnits, startDate, endDate }: { buFilter:
           </div>
           {/* Sort field */}
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-            <SelectTrigger className="w-[140px] bg-background shrink-0">
+            <SelectTrigger className="w-full min-w-0 bg-background sm:w-[140px] sm:shrink-0">
               <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
               <SelectValue />
             </SelectTrigger>
@@ -1580,7 +1634,7 @@ function ExpenseTab({ buFilter, businessUnits, startDate, endDate }: { buFilter:
               : <ArrowDown className="w-4 h-4 text-primary" />}
           </button>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:shrink-0 sm:justify-end">
           {/* Total expense display */}
           <div className="text-right">
             <p className="text-[11px] text-muted-foreground leading-tight">Total Expense</p>
@@ -1590,20 +1644,20 @@ function ExpenseTab({ buFilter, businessUnits, startDate, endDate }: { buFilter:
           </div>
         <Sheet open={isAddOpen} onOpenChange={(v) => { setIsAddOpen(v); if (!v) resetForm(); }}>
           <SheetTrigger asChild>
-            <Button className="shrink-0 bg-red-600 hover:bg-red-700 text-white">
+            <Button className="shrink-0 bg-red-600 text-white hover:bg-red-700">
               <Plus className="w-4 h-4 mr-2" />
               Record Expense
             </Button>
           </SheetTrigger>
-          <SheetContent className="sm:max-w-[480px] flex flex-col overflow-hidden p-0">
-            <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+          <SheetContent className="!w-full max-w-none flex flex-col overflow-hidden p-0 sm:max-w-[480px]">
+            <SheetHeader className="shrink-0 border-b px-4 pb-4 pt-5 sm:px-6 sm:pt-6">
               <SheetTitle>Catat Pengeluaran Baru</SheetTitle>
               <SheetDescription>Isi detail transaksi expense dan tekan Simpan.</SheetDescription>
             </SheetHeader>
 
-            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+            <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
               {/* Jumlah & Tanggal */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label>Jumlah (IDR) <span className="text-destructive">*</span></Label>
                   <Input
@@ -1639,7 +1693,7 @@ function ExpenseTab({ buFilter, businessUnits, startDate, endDate }: { buFilter:
               <Separator />
 
               {/* Vendor & Receipt */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label>Vendor / Supplier</Label>
                   <Input placeholder="Nama vendor..." value={form.vendor} onChange={(e) => setF("vendor", e.target.value)} />
@@ -1651,7 +1705,7 @@ function ExpenseTab({ buFilter, businessUnits, startDate, endDate }: { buFilter:
               </div>
 
               {/* Category & Payment */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label>Kategori</Label>
                   <Select value={form.category} onValueChange={(v) => setF("category", v)}>
@@ -1694,7 +1748,7 @@ function ExpenseTab({ buFilter, businessUnits, startDate, endDate }: { buFilter:
               </div>
             </div>
 
-            <SheetFooter className="px-6 py-4 border-t shrink-0 flex gap-2">
+            <SheetFooter className="flex shrink-0 gap-2 border-t px-4 py-4 sm:px-6">
               <Button variant="outline" className="flex-1" onClick={() => setIsAddOpen(false)} disabled={saving}>
                 Batal
               </Button>
@@ -1707,8 +1761,52 @@ function ExpenseTab({ buFilter, businessUnits, startDate, endDate }: { buFilter:
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <Table>
+      <div className="divide-y sm:hidden">
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="space-y-3 p-4">
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          ))
+        ) : filtered.length === 0 ? (
+          <p className="px-4 py-12 text-center text-sm text-muted-foreground">
+            {search ? "Tidak ada transaksi yang cocok." : "Belum ada data expense."}
+          </p>
+        ) : filtered.map((item) => (
+          <button
+            type="button"
+            key={item.id}
+            className="block w-full p-4 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            onClick={() => openExpenseEdit(item as Expense)}
+          >
+            <span className="flex items-start justify-between gap-3">
+              <span className="min-w-0">
+                <span className="block truncate font-semibold text-foreground">{item.receiptNumber || "Tanpa receipt"}</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  {new Date(item.date).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                </span>
+              </span>
+              <span className="shrink-0 font-bold text-red-600">{formatIDR(item.amount)}</span>
+            </span>
+            <span className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+              <span className="min-w-0">
+                <span className="block text-[11px] text-muted-foreground">Business Unit</span>
+                <span className="block truncate font-medium text-foreground">{item.businessUnitName || "—"}</span>
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[11px] text-muted-foreground">Vendor</span>
+                <span className="block truncate font-medium text-foreground">{item.vendor || "—"}</span>
+              </span>
+            </span>
+            <Badge variant="secondary" className="mt-3 bg-secondary/10">{item.category || "General"}</Badge>
+          </button>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto sm:block">
+        <Table className="min-w-[720px]">
           <TableHeader className="bg-muted/50">
             <TableRow>
               <TableHead>Tanggal</TableHead>
@@ -1757,13 +1855,13 @@ function ExpenseTab({ buFilter, businessUnits, startDate, endDate }: { buFilter:
 
     {/* ── Edit Expense Sheet ────────────────────────────────────────────── */}
     <Sheet open={!!editItem} onOpenChange={(o) => { if (!o) setEditItem(null); }}>
-      <SheetContent className="sm:max-w-[480px] flex flex-col overflow-hidden p-0">
-        <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+      <SheetContent className="!w-full max-w-none flex flex-col overflow-hidden p-0 sm:max-w-[480px]">
+        <SheetHeader className="shrink-0 border-b px-4 pb-4 pt-5 sm:px-6 sm:pt-6">
           <SheetTitle>Edit Expense</SheetTitle>
           <SheetDescription>Perbarui detail transaksi pengeluaran.</SheetDescription>
         </SheetHeader>
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Jumlah (IDR)</Label>
               <Input type="number" value={editForm.amount ?? ""} onChange={e => setEF("amount", e.target.value)} />
@@ -1785,7 +1883,7 @@ function ExpenseTab({ buFilter, businessUnits, startDate, endDate }: { buFilter:
             </Select>
           </div>
           <Separator />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Vendor / Supplier</Label>
               <Input value={editForm.vendor ?? ""} onChange={e => setEF("vendor", e.target.value)} placeholder="Nama vendor..." />
@@ -1795,7 +1893,7 @@ function ExpenseTab({ buFilter, businessUnits, startDate, endDate }: { buFilter:
               <Input value={editForm.receiptNumber ?? ""} onChange={e => setEF("receiptNumber", e.target.value)} placeholder="RCP-2026-001" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Kategori</Label>
               <Select value={editForm.category ?? ""} onValueChange={v => setEF("category", v)}>
@@ -1824,7 +1922,7 @@ function ExpenseTab({ buFilter, businessUnits, startDate, endDate }: { buFilter:
             <Textarea value={editForm.description ?? ""} onChange={e => setEF("description", e.target.value)} rows={2} />
           </div>
         </div>
-        <SheetFooter className="px-6 py-4 border-t shrink-0">
+        <SheetFooter className="shrink-0 border-t px-4 py-4 sm:px-6">
           {deleteConfirm ? (
             <div className="flex gap-2 w-full">
               <Button variant="outline" className="flex-1" onClick={() => setDeleteConfirm(false)} disabled={editSaving}>Batal</Button>
@@ -1855,10 +1953,10 @@ function ProfitLossTab({ buFilter }: { buFilter: number | null }) {
   const { data: pl, isLoading } = useGetProfitLoss({ businessUnitId: buFilter, period: period as any });
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-5 sm:space-y-6">
       <div className="flex justify-end">
         <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-[180px] bg-card">
+          <SelectTrigger className="w-full bg-card sm:w-[180px]">
             <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
             <SelectValue placeholder="Period" />
           </SelectTrigger>
@@ -1882,31 +1980,31 @@ function ProfitLossTab({ buFilter }: { buFilter: number | null }) {
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="border-none shadow-sm bg-card">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <p className="text-sm font-medium text-muted-foreground mb-2 flex items-center">
                   Total Revenue <TrendingUp className="w-4 h-4 ml-2 text-green-500" />
                 </p>
-                <p className="text-3xl font-bold text-foreground">{formatIDR(pl.revenue)}</p>
+                <p className="break-words text-2xl font-bold text-foreground sm:text-3xl">{formatIDR(pl.revenue)}</p>
               </CardContent>
             </Card>
             <Card className="border-none shadow-sm bg-card">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <p className="text-sm font-medium text-muted-foreground mb-2 flex items-center">
                   Total Expenses <TrendingDown className="w-4 h-4 ml-2 text-red-500" />
                 </p>
-                <p className="text-3xl font-bold text-foreground">{formatIDR(pl.expenses)}</p>
+                <p className="break-words text-2xl font-bold text-foreground sm:text-3xl">{formatIDR(pl.expenses)}</p>
               </CardContent>
             </Card>
             <Card className="border-none shadow-sm bg-primary text-primary-foreground">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start">
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <p className="text-primary-foreground/80 text-sm font-medium mb-2 flex items-center">
                       Net Profit <Wallet className="w-4 h-4 ml-2 text-primary-foreground/70" />
                     </p>
-                    <p className="text-3xl font-bold">{formatIDR(pl.netProfit)}</p>
+                    <p className="break-words text-2xl font-bold sm:text-3xl">{formatIDR(pl.netProfit)}</p>
                   </div>
-                  <div className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
+                  <div className="w-fit rounded-full bg-white/20 px-3 py-1 text-sm font-medium">
                     {pl.margin}% Margin
                   </div>
                 </div>
@@ -1919,8 +2017,8 @@ function ProfitLossTab({ buFilter }: { buFilter: number | null }) {
               <CardTitle>Profit & Loss Breakdown</CardTitle>
               <CardDescription>Daily revenue vs expense trend for {pl.period}</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="h-[400px] w-full mt-4">
+            <CardContent className="overflow-hidden px-3 pb-4 sm:px-6 sm:pb-6">
+              <div className="mt-4 h-[320px] w-full sm:h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={pl.breakdown} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
@@ -1955,10 +2053,10 @@ function CashflowTab({ buFilter }: { buFilter: number | null }) {
   const { data: cf, isLoading } = useGetCashflowDetail({ businessUnitId: buFilter, period: period as any });
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-5 sm:space-y-6">
       <div className="flex justify-end">
         <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-[180px] bg-card">
+          <SelectTrigger className="w-full bg-card sm:w-[180px]">
             <CalendarIcon className="w-4 h-4 mr-2 text-muted-foreground" />
             <SelectValue placeholder="Period" />
           </SelectTrigger>
@@ -1983,31 +2081,31 @@ function CashflowTab({ buFilter }: { buFilter: number | null }) {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
              <Card className="border-none shadow-sm">
-                <CardContent className="p-5 flex flex-col justify-center h-full">
+                <CardContent className="flex h-full flex-col justify-center p-4 sm:p-5">
                   <p className="text-sm text-muted-foreground mb-1">Bank Balance</p>
-                  <p className="text-2xl font-bold">{formatIDR(cf.bankBalance)}</p>
+                  <p className="break-words text-xl font-bold sm:text-2xl">{formatIDR(cf.bankBalance)}</p>
                 </CardContent>
              </Card>
              <Card className="border-none shadow-sm">
-                <CardContent className="p-5 flex flex-col justify-center h-full">
+                <CardContent className="flex h-full flex-col justify-center p-4 sm:p-5">
                   <p className="text-sm text-muted-foreground mb-1 flex items-center">
                     Total Inflow <ArrowDownRight className="w-3 h-3 ml-1 text-green-500" />
                   </p>
-                  <p className="text-2xl font-bold text-green-600">{formatIDR(cf.totalInflow)}</p>
+                  <p className="break-words text-xl font-bold text-green-600 sm:text-2xl">{formatIDR(cf.totalInflow)}</p>
                 </CardContent>
              </Card>
              <Card className="border-none shadow-sm">
-                <CardContent className="p-5 flex flex-col justify-center h-full">
+                <CardContent className="flex h-full flex-col justify-center p-4 sm:p-5">
                   <p className="text-sm text-muted-foreground mb-1 flex items-center">
                     Total Outflow <ArrowUpRight className="w-3 h-3 ml-1 text-red-500" />
                   </p>
-                  <p className="text-2xl font-bold text-red-600">{formatIDR(cf.totalOutflow)}</p>
+                  <p className="break-words text-xl font-bold text-red-600 sm:text-2xl">{formatIDR(cf.totalOutflow)}</p>
                 </CardContent>
              </Card>
              <Card className={`border-none shadow-sm ${cf.netCashflow >= 0 ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
-                <CardContent className="p-5 flex flex-col justify-center h-full">
+                <CardContent className="flex h-full flex-col justify-center p-4 sm:p-5">
                   <p className="text-sm font-medium text-muted-foreground mb-1">Net Cashflow</p>
-                  <p className={`text-2xl font-bold ${cf.netCashflow >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                  <p className={`break-words text-xl font-bold sm:text-2xl ${cf.netCashflow >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
                     {cf.netCashflow >= 0 ? '+' : ''}{formatIDR(cf.netCashflow)}
                   </p>
                 </CardContent>
@@ -2019,8 +2117,8 @@ function CashflowTab({ buFilter }: { buFilter: number | null }) {
               <CardTitle>Cashflow Trend</CardTitle>
               <CardDescription>Inflow vs Outflow over time</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="h-[400px] w-full mt-4">
+            <CardContent className="overflow-hidden px-3 pb-4 sm:px-6 sm:pb-6">
+              <div className="mt-4 h-[320px] w-full sm:h-[400px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={cf.series} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                     <defs>
