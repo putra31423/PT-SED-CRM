@@ -52,11 +52,18 @@ const statusColors: Record<string, string> = {
   "VIP": "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
 };
 
+const businessUnitNameCollator = new Intl.Collator("id", {
+  numeric: true,
+  sensitivity: "base",
+});
+
+type CustomerSort = "business_unit" | "name" | "date_added" | "last_modified";
+
 export default function CRM() {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<"name" | "date_added" | "last_modified">("date_added");
+  const [sortBy, setSortBy] = useState<CustomerSort>("business_unit");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
@@ -65,6 +72,9 @@ export default function CRM() {
   const { toast } = useToast();
   const createCustomer = useCreateCustomer();
   const { data: businessUnits } = useListBusinessUnits();
+  const orderedBusinessUnits = [...(businessUnits ?? [])].sort((a, b) =>
+    businessUnitNameCollator.compare(a.name, b.name),
+  );
 
   // Read ?bu= / ?buName= from URL (deep-link from BU detail page, and the
   // Business Unit filter below). wouter's useLocation() returns the pathname
@@ -77,10 +87,12 @@ export default function CRM() {
     search: search.length > 2 ? search : null,
     status: statusFilter !== "all" ? statusFilter as any : null,
     businessUnitId: buFromUrl ? parseInt(buFromUrl) : undefined,
+    limit: 1000,
   });
   const { data: customersData, isLoading, error: customersError } = customersQuery;
   
   const { data: stats } = useGetCustomerStats();
+  const statusAssignmentTotal = stats?.byStatus.reduce((sum, item) => sum + item.count, 0) ?? 0;
 
   function clearBuFilter() {
     setLocation("/crm");
@@ -94,7 +106,7 @@ export default function CRM() {
       clearBuFilter();
       return;
     }
-    const unit = (businessUnits ?? []).find(bu => String(bu.id) === value);
+    const unit = orderedBusinessUnits.find(bu => String(bu.id) === value);
     setLocation(
       `/crm?bu=${value}${unit ? `&buName=${encodeURIComponent(unit.name)}` : ""}`,
     );
@@ -233,7 +245,7 @@ export default function CRM() {
                   <Select value={form.businessUnitId} onValueChange={v => setF("businessUnitId", v)}>
                     <SelectTrigger><SelectValue placeholder="— Pilih BU —" /></SelectTrigger>
                     <SelectContent>
-                      {(businessUnits ?? []).map(bu => (
+                      {orderedBusinessUnits.map(bu => (
                         <SelectItem key={bu.id} value={String(bu.id)}>{bu.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -269,33 +281,40 @@ export default function CRM() {
       )}
 
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="border-none shadow-sm bg-primary text-primary-foreground">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-primary-foreground/80 text-sm font-medium mb-1">Total Database</p>
-                  <p className="text-3xl font-bold">{stats.total}</p>
+        <div className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="border-none shadow-sm bg-primary text-primary-foreground">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-primary-foreground/80 text-sm font-medium mb-1">Total Customer Unik</p>
+                    <p className="text-3xl font-bold">{stats.total}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                    <Users className="w-6 h-6 text-white" />
+                  </div>
                 </div>
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                  <Users className="w-6 h-6 text-white" />
-                </div>
-              </div>
-              <p className="text-sm mt-4 text-primary-foreground/90 flex items-center">
-                <ArrowUpRight className="w-4 h-4 mr-1" />
-                +{stats.growth}% from last month
-              </p>
-            </CardContent>
-          </Card>
+                <p className="text-sm mt-4 text-primary-foreground/90 flex items-center">
+                  <ArrowUpRight className="w-4 h-4 mr-1" />
+                  +{stats.growth}% from last month
+                </p>
+              </CardContent>
+            </Card>
           
-          <div className="md:col-span-3 grid grid-cols-2 md:grid-cols-5 gap-2">
-            {stats.byStatus.slice(0, 5).map(stat => (
-              <Card key={stat.status} className="border-none shadow-sm flex flex-col justify-center items-center text-center p-4 cursor-pointer hover-elevate transition-all" onClick={() => setStatusFilter(stat.status)}>
-                <p className="text-2xl font-bold text-foreground mb-1">{stat.count}</p>
-                <Badge variant="outline" className={statusColors[stat.status] || ""}>{stat.status}</Badge>
-              </Card>
-            ))}
+            <div className="md:col-span-3 grid grid-cols-2 md:grid-cols-5 gap-2">
+              {stats.byStatus.slice(0, 5).map(stat => (
+                <Card key={stat.status} className="border-none shadow-sm flex flex-col justify-center items-center text-center p-4 cursor-pointer hover-elevate transition-all" onClick={() => setStatusFilter(stat.status)}>
+                  <p className="text-2xl font-bold text-foreground mb-1">{stat.count}</p>
+                  <Badge variant="outline" className={statusColors[stat.status] || ""}>{stat.status}</Badge>
+                </Card>
+              ))}
+            </div>
           </div>
+          {statusAssignmentTotal > stats.total && (
+            <p className="px-1 text-xs text-muted-foreground">
+              Total customer tetap {stats.total}. Jumlah kartu status dapat lebih besar karena satu customer bisa memiliki beberapa status.
+            </p>
+          )}
         </div>
       )}
 
@@ -312,11 +331,12 @@ export default function CRM() {
               />
             </div>
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-              <SelectTrigger className="w-[170px] bg-background shrink-0">
+              <SelectTrigger className="w-[190px] bg-background shrink-0">
                 <ArrowUpDown className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="business_unit">Business Unit 1–{orderedBusinessUnits.length}</SelectItem>
                 <SelectItem value="name">Nama A–Z</SelectItem>
                 <SelectItem value="date_added">Date Added</SelectItem>
                 <SelectItem value="last_modified">Last Modified</SelectItem>
@@ -325,19 +345,19 @@ export default function CRM() {
             {/* Filter per Business Unit — shares the ?bu= URL param with the
                 deep-link from the BU detail page, so both stay in sync. */}
             <Select value={buFromUrl || "all"} onValueChange={selectBusinessUnit}>
-              {/* Wide enough for a unit name plus its "(n)" count before the
+              {/* Wide enough for a unit name plus its customer count before the
                   label starts clipping against the chevron. */}
-              <SelectTrigger className="w-[250px] bg-background shrink-0">
+              <SelectTrigger className="w-[290px] bg-background shrink-0">
                 <Building className="w-3.5 h-3.5 mr-1.5 text-muted-foreground shrink-0" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">
-                  Semua Business Unit{stats ? ` (${stats.total})` : ""}
+                  Semua · {stats?.total ?? 0} customer / {orderedBusinessUnits.length} unit
                 </SelectItem>
-                {(businessUnits ?? []).map(bu => (
+                {orderedBusinessUnits.map(bu => (
                   <SelectItem key={bu.id} value={String(bu.id)}>
-                    {bu.name} ({bu.totalCustomers ?? 0})
+                    {bu.name} · {bu.totalCustomers ?? 0} customer
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -392,6 +412,15 @@ export default function CRM() {
                 ))
               ) : customersData?.data && customersData.data.length > 0 ? (
                 [...customersData.data].sort((a, b) => {
+                  if (sortBy === "business_unit") {
+                    if (!a.businessUnitName && b.businessUnitName) return 1;
+                    if (a.businessUnitName && !b.businessUnitName) return -1;
+                    const byUnit = businessUnitNameCollator.compare(
+                      a.businessUnitName ?? "",
+                      b.businessUnitName ?? "",
+                    );
+                    return byUnit || a.fullName.localeCompare(b.fullName, "id");
+                  }
                   if (sortBy === "name") return a.fullName.localeCompare(b.fullName);
                   if (sortBy === "date_added") return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
                   if (sortBy === "last_modified") return new Date(b.updatedAt ?? 0).getTime() - new Date(a.updatedAt ?? 0).getTime();

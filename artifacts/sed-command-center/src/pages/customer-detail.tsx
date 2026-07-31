@@ -3,6 +3,7 @@ import { useRoute, useLocation } from "wouter";
 import {
   useGetCustomer, useUpdateCustomer, useDeleteCustomer, useListBusinessUnits, useListIncome,
   getGetCustomerQueryKey, getListCustomersQueryKey, getGetCustomerStatsQueryKey,
+  getListBusinessUnitsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -144,8 +145,12 @@ export default function CustomerDetail() {
           tags:              form.tags || undefined,
         },
       });
-      await queryClient.invalidateQueries({ queryKey: getGetCustomerQueryKey(id) });
-      await queryClient.invalidateQueries({ queryKey: getListCustomersQueryKey() });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getGetCustomerQueryKey(id) }),
+        queryClient.invalidateQueries({ queryKey: getListCustomersQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getGetCustomerStatsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getListBusinessUnitsQueryKey() }),
+      ]);
       toast({ title: `Profil ${form.fullName} diperbarui ✓` });
       setEditOpen(false);
     } catch {
@@ -163,6 +168,7 @@ export default function CustomerDetail() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getListCustomersQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getGetCustomerStatsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getListBusinessUnitsQueryKey() }),
       ]);
       toast({ title: `Customer ${customer?.fullName} berhasil dihapus` });
       setLocation("/crm");
