@@ -37,7 +37,14 @@ router.get("/dashboard/summary", async (req, res) => {
       total: sql<number>`coalesce(sum(${incomeTable.amount}::numeric), 0)`,
     }).from(incomeTable).where(and(gte(incomeTable.date, today), lte(incomeTable.date, today), incomeIsReceived()));
 
-    const yearConds: any[] = [gte(incomeTable.date, `${currentYear}-01-01`), incomeIsReceived()];
+    const yearConds: any[] = [
+      gte(incomeTable.date, `${currentYear}-01-01`),
+      lte(incomeTable.date, today),
+      incomeIsReceived(),
+    ];
+    if (businessUnitId && businessUnitId !== "null") {
+      yearConds.push(eq(incomeTable.businessUnitId, parseInt(businessUnitId as string)));
+    }
     const [yearInc] = await db.select({ total: sql<number>`coalesce(sum(${incomeTable.amount}::numeric), 0)` }).from(incomeTable).where(and(...yearConds));
 
     const [custAgg] = await db.select({ count: sql<number>`count(*)` }).from(customersTable);

@@ -121,7 +121,7 @@ export default function Dashboard() {
         </div>
       ) : summary ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {renderKpiCard("Total Revenue (YTD)", summary.totalRevenue, <DollarSign className="h-4 w-4 text-primary" />, "vs last year", summary.revenueGrowth, "/finance/income")}
+          {renderKpiCard("Total Revenue (YTD)", summary.yearlyRevenue, <DollarSign className="h-4 w-4 text-primary" />, "vs last year", summary.revenueGrowth, "/finance/income")}
           {renderKpiCard("Net Profit", summary.netProfit, <TrendingUp className="h-4 w-4 text-green-500" />, `Profit Margin: ${summary.profitMargin.toFixed(2)}%`, undefined, "/reports")}
           {renderKpiCard("Cashflow", cashflow?.netCashflow ?? 0, <Activity className="h-4 w-4 text-blue-500" />, "Net cashflow (all-time)", undefined, "/finance/cashflow")}
           {renderKpiCard("Total Expenses", summary.totalExpenses, <CreditCard className="h-4 w-4 text-red-500" />, "vs last year", summary.expenseGrowth, "/finance/expenses")}
